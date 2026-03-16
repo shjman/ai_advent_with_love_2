@@ -92,6 +92,9 @@ dependencies {
     // Anthropic
     implementation(libs.anthropic.java)
 
+    // Logging
+    implementation(libs.timber)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
