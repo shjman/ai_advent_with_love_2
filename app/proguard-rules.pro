@@ -19,3 +19,17 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Anthropic SDK
+-keep class com.anthropic.** { *; }
+-dontwarn com.anthropic.**
+
+# OkHttp
+-dontwarn okhttp3.**
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+-dontwarn okio.**
+
+# Kotlin reflection
+-keep class kotlin.Metadata { *; }
+-dontwarn kotlin.**
