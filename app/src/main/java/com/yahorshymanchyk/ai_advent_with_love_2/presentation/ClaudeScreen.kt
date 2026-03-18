@@ -42,6 +42,7 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
     var maxTokensInput by remember { mutableStateOf("512") }
+    var stopSequenceInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
     val maxTokensValue = maxTokensInput.toIntOrNull()
@@ -81,16 +82,32 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
                 }
             }
 
-            MaxTokensInput(
-                value = maxTokensInput,
-                onValueChange = { maxTokensInput = it },
-                isError = !isMaxTokensValid
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                MaxTokensInput(
+                    value = maxTokensInput,
+                    onValueChange = { maxTokensInput = it },
+                    isError = !isMaxTokensValid
+                )
+                StopSequenceInput(
+                    value = stopSequenceInput,
+                    onValueChange = { stopSequenceInput = it }
+                )
+            }
             InputSection(
                 text = inputText,
                 onTextChange = { inputText = it },
                 onSend = {
-                    viewModel.sendMessage(inputText, maxTokensValue!!)
+                    viewModel.sendMessage(
+                        inputText,
+                        maxTokensValue!!,
+                        stopSequenceInput.takeIf { it.isNotBlank() }
+                    )
                     inputText = ""
                 },
                 isSendEnabled = inputText.isNotBlank() && isMaxTokensValid && !uiState.isLoading
@@ -106,29 +123,22 @@ private fun MaxTokensInput(
     onValueChange: (String) -> Unit,
     isError: Boolean
 ) {
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "maxTokens",
-                style = MaterialTheme.typography.labelMedium,
-                color = if (isError) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.width(100.dp),
-                singleLine = true,
-                isError = isError,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                textStyle = MaterialTheme.typography.bodyMedium
-            )
-        }
+    Column {
+        Text(
+            text = "maxTokens",
+            style = MaterialTheme.typography.labelMedium,
+            color = if (isError) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.width(100.dp),
+            singleLine = true,
+            isError = isError,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            textStyle = MaterialTheme.typography.bodyMedium
+        )
         if (isError) {
             Text(
                 text = "invalid input",
@@ -137,6 +147,28 @@ private fun MaxTokensInput(
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun StopSequenceInput(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    Column {
+        Text(
+            text = "stopSequence",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.width(140.dp),
+            singleLine = true,
+            placeholder = { Text("optional", style = MaterialTheme.typography.bodySmall) },
+            textStyle = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 

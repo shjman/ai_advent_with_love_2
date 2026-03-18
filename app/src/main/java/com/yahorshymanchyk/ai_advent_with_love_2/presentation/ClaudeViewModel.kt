@@ -19,14 +19,14 @@ class ClaudeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ClaudeUiState())
     val uiState: StateFlow<ClaudeUiState> = _uiState.asStateFlow()
 
-    fun sendMessage(userInput: String, maxTokens: Int) {
+    fun sendMessage(userInput: String, maxTokens: Int, stopSequence: String?) {
         val historyWithUserMsg = _uiState.value.messages +
                 ChatMessage(ChatMessage.Role.USER, userInput)
 
         _uiState.value = ClaudeUiState(messages = historyWithUserMsg, isLoading = true)
 
         viewModelScope.launch {
-            sendMessageUseCase(historyWithUserMsg, maxTokens)
+            sendMessageUseCase(historyWithUserMsg, maxTokens, stopSequence)
                 .onSuccess { assistantMsg ->
                     _uiState.value = ClaudeUiState(messages = historyWithUserMsg + assistantMsg)
                 }
