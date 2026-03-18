@@ -44,7 +44,17 @@ class ClaudeApiService(private val client: AnthropicClient) {
                 .filter { it.isText() }
                 .joinToString("") { it.asText().text() }
 
-            Timber.d("ClaudeApiService Response received in %dms: %s", elapsedMs, responseText)
+            Timber.d(
+                "ClaudeApiService Response [%dms] | id=%s | model=%s | stop_reason=%s | stop_sequence=%s | tokens(in=%d, out=%d) | text=%s",
+                elapsedMs,
+                response.id(),
+                response.model(),
+                response.stopReason().orElse(null),
+                response.stopSequence().orElse(null),
+                response.usage().inputTokens(),
+                response.usage().outputTokens(),
+                responseText
+            )
 
             responseText
         }
