@@ -10,36 +10,42 @@ import timber.log.Timber
 
 class ClaudeApiService(private val client: AnthropicClient) {
 
-    suspend fun sendMessage(history: List<ChatMessage>): String = withContext(Dispatchers.IO) {
-        Timber.d("Sending message: %s (history: %d messages)", history.last().content, history.size)
-
-        val paramsBuilder = MessageCreateParams.builder()
-            .model("claude-haiku-4-5-20251001")
-            .maxTokens(1024)
-
-        history.forEach { msg ->
-            val role = when (msg.role) {
-                ChatMessage.Role.USER -> MessageParam.Role.USER
-                ChatMessage.Role.ASSISTANT -> MessageParam.Role.ASSISTANT
-            }
-            paramsBuilder.addMessage(
-                MessageParam.builder()
-                    .role(role)
-                    .content(msg.content)
-                    .build()
+    suspend fun sendMessage(history: List<ChatMessage>, maxTokens: Int): String =
+        withContext(Dispatchers.IO) {
+            Timber.d(
+                "ClaudeApiService Sending message: %s (history: %d messages, maxTokens: %d)",
+                history.last().content,
+                history.size,
+                maxTokens
             )
+
+            val paramsBuilder = MessageCreateParams.builder()
+                .model("claude-haiku-4-5-20251001")
+                .maxTokens(maxTokens.toLong())
+
+            history.forEach { msg ->
+                val role = when (msg.role) {
+                    ChatMessage.Role.USER -> MessageParam.Role.USER
+                    ChatMessage.Role.ASSISTANT -> MessageParam.Role.ASSISTANT
+                }
+                paramsBuilder.addMessage(
+                    MessageParam.builder()
+                        .role(role)
+                        .content(msg.content)
+                        .build()
+                )
+            }
+
+            val startMs = System.currentTimeMillis()
+            val response = client.messages().create(paramsBuilder.build())
+            val elapsedMs = System.currentTimeMillis() - startMs
+
+            val responseText = response.content()
+                .filter { it.isText() }
+                .joinToString("") { it.asText().text() }
+
+            Timber.d("ClaudeApiService Response received in %dms: %s", elapsedMs, responseText)
+
+            responseText
         }
-
-        val startMs = System.currentTimeMillis()
-        val response = client.messages().create(paramsBuilder.build())
-        val elapsedMs = System.currentTimeMillis() - startMs
-
-        val responseText = response.content()
-            .filter { it.isText() }
-            .joinToString("") { it.asText().text() }
-
-        Timber.d("Response received in %dms: %s", elapsedMs, responseText)
-
-        responseText
-    }
 }

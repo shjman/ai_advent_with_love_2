@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,7 +41,11 @@ import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.ChatMessage
 fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
+    var maxTokensInput by remember { mutableStateOf("512") }
     val listState = rememberLazyListState()
+
+    val maxTokensValue = maxTokensInput.toIntOrNull()
+    val isMaxTokensValid = maxTokensValue != null && maxTokensValue > 0
 
     val error = uiState.error
     val itemCount = uiState.messages.size +
@@ -73,16 +81,61 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
                 }
             }
 
+            MaxTokensInput(
+                value = maxTokensInput,
+                onValueChange = { maxTokensInput = it },
+                isError = !isMaxTokensValid
+            )
             InputSection(
                 text = inputText,
                 onTextChange = { inputText = it },
                 onSend = {
-                    viewModel.sendMessage(inputText)
+                    viewModel.sendMessage(inputText, maxTokensValue!!)
                     inputText = ""
                 },
-                isSendEnabled = inputText.isNotBlank() && !uiState.isLoading
+                isSendEnabled = inputText.isNotBlank() && isMaxTokensValid && !uiState.isLoading
             )
             PoweredByFooter()
+        }
+    }
+}
+
+@Composable
+private fun MaxTokensInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    isError: Boolean
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "maxTokens",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isError) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.width(100.dp),
+                singleLine = true,
+                isError = isError,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                textStyle = MaterialTheme.typography.bodyMedium
+            )
+        }
+        if (isError) {
+            Text(
+                text = "invalid input",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
     }
 }
@@ -197,7 +250,7 @@ private fun PoweredByFooter() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
-        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        textAlign = TextAlign.Center,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )

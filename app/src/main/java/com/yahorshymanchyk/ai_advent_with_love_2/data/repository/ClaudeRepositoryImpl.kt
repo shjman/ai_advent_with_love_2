@@ -6,11 +6,11 @@ import com.yahorshymanchyk.ai_advent_with_love_2.domain.repository.ClaudeReposit
 
 class ClaudeRepositoryImpl(private val apiService: ClaudeApiService) : ClaudeRepository {
 
-    override suspend fun sendMessage(history: List<ChatMessage>): Result<ChatMessage> =
+    override suspend fun sendMessage(history: List<ChatMessage>, maxTokens: Int): Result<ChatMessage> =
         runCatching {
             ChatMessage(
                 role = ChatMessage.Role.ASSISTANT,
-                content = apiService.sendMessage(history)
+                content = apiService.sendMessage(history, maxTokens)
             )
         }
 }
