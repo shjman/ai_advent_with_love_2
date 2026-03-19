@@ -1,22 +1,19 @@
 package com.yahorshymanchyk.ai_advent_with_love_2
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import com.yahorshymanchyk.ai_advent_with_love_2.presentation.ClaudeScreen
-import com.yahorshymanchyk.ai_advent_with_love_2.ui.theme.Ai_advent_with_love_2Theme
+import androidx.appcompat.app.AppCompatActivity
+import com.yahorshymanchyk.ai_advent_with_love_2.presentation.ClaudeFragment
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            Ai_advent_with_love_2Theme {
-                ClaudeScreen()
-            }
+        setContentView(R.layout.activity_main)
+        if (savedInstanceState == null) {
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, ClaudeFragment())
+                .commit()
         }
     }
 }
