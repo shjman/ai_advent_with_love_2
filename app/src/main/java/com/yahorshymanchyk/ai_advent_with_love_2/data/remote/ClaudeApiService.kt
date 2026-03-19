@@ -10,19 +10,24 @@ import timber.log.Timber
 
 class ClaudeApiService(private val client: AnthropicClient) {
 
-    suspend fun sendMessage(history: List<ChatMessage>, maxTokens: Int, stopSequence: String?): String =
+    suspend fun sendMessage(history: List<ChatMessage>, maxTokens: Int, stopSequence: String?, systemPrompt: String?): String =
         withContext(Dispatchers.IO) {
             Timber.d(
-                "ClaudeApiService Sending message: %s (history: %d messages, maxTokens: %d, stopSequence=%s)",
+                "ClaudeApiService Sending message: %s (history: %d messages, maxTokens: %d, stopSequence=%s, systemPrompt=%s)",
                 history.last().content,
                 history.size,
                 maxTokens,
-                stopSequence
+                stopSequence,
+                systemPrompt
             )
 
             val paramsBuilder = MessageCreateParams.builder()
                 .model("claude-haiku-4-5-20251001")
                 .maxTokens(maxTokens.toLong())
+
+            if (!systemPrompt.isNullOrBlank()) {
+                paramsBuilder.system(systemPrompt)
+            }
 
             if (!stopSequence.isNullOrBlank()) {
                 paramsBuilder.addStopSequence(stopSequence)

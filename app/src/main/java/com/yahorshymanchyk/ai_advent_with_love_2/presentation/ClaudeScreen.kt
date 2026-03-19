@@ -43,6 +43,7 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
     var inputText by remember { mutableStateOf("") }
     var maxTokensInput by remember { mutableStateOf("512") }
     var stopSequenceInput by remember { mutableStateOf("") }
+    var systemPromptInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
     val maxTokensValue = maxTokensInput.toIntOrNull()
@@ -99,6 +100,10 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
                     onValueChange = { stopSequenceInput = it }
                 )
             }
+            SystemPromptInput(
+                value = systemPromptInput,
+                onValueChange = { systemPromptInput = it }
+            )
             InputSection(
                 text = inputText,
                 onTextChange = { inputText = it },
@@ -106,7 +111,8 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
                     viewModel.sendMessage(
                         inputText,
                         maxTokensValue!!,
-                        stopSequenceInput.takeIf { it.isNotBlank() }
+                        stopSequenceInput.takeIf { it.isNotBlank() },
+                        systemPromptInput.takeIf { it.isNotBlank() }
                     )
                     inputText = ""
                 },
@@ -167,6 +173,30 @@ private fun StopSequenceInput(
             modifier = Modifier.width(140.dp),
             singleLine = true,
             placeholder = { Text("optional", style = MaterialTheme.typography.bodySmall) },
+            textStyle = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Composable
+private fun SystemPromptInput(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = "system_prompt",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("optional", style = MaterialTheme.typography.bodySmall) },
+            maxLines = 3,
             textStyle = MaterialTheme.typography.bodyMedium
         )
     }
