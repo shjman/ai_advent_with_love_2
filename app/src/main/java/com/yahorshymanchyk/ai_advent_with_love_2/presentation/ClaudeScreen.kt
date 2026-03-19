@@ -1,5 +1,8 @@
 package com.yahorshymanchyk.ai_advent_with_love_2.presentation
 
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,7 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -30,6 +33,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,6 +51,8 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
     var stopSequenceInput by remember { mutableStateOf("") }
     var systemPromptInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
 
     val maxTokensValue = maxTokensInput.toIntOrNull()
     val isMaxTokensValid = maxTokensValue != null && maxTokensValue > 0
@@ -72,8 +80,15 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(uiState.messages) { message ->
-                    MessageBubble(message)
+                itemsIndexed(uiState.messages) { index, message ->
+                    MessageBubble(
+                        message = message,
+                        onLongClick = {
+                            val text = buildQAText(uiState.messages, index)
+                            clipboardManager.setText(AnnotatedString(text))
+                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
                 if (uiState.isLoading) {
                     item { LoadingBubble() }
@@ -119,6 +134,65 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
                 isSendEnabled = inputText.isNotBlank() && isMaxTokensValid && !uiState.isLoading
             )
             PoweredByFooter()
+        }
+    }
+}
+
+private fun buildQAText(messages: List<ChatMessage>, index: Int): String {
+    val message = messages[index]
+    return when (message.role) {
+        ChatMessage.Role.USER -> {
+            val answer = messages.getOrNull(index + 1)
+                ?.takeIf { it.role == ChatMessage.Role.ASSISTANT }
+                ?.content
+            if (answer != null) "Q: ${message.content}\n\nA: $answer"
+            else "Q: ${message.content}"
+        }
+        ChatMessage.Role.ASSISTANT -> {
+            val question = messages.getOrNull(index - 1)
+                ?.takeIf { it.role == ChatMessage.Role.USER }
+                ?.content
+            if (question != null) "Q: $question\n\nA: ${message.content}"
+            else "A: ${message.content}"
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MessageBubble(message: ChatMessage, onLongClick: () -> Unit) {
+    val isUser = message.role == ChatMessage.Role.USER
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
+    ) {
+        Surface(
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = if (isUser) 16.dp else 4.dp,
+                bottomEnd = if (isUser) 4.dp else 16.dp
+            ),
+            color = if (isUser)
+                MaterialTheme.colorScheme.primary
+            else
+                MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier
+                .widthIn(max = 300.dp)
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = onLongClick
+                )
+        ) {
+            Text(
+                text = message.content,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                color = if (isUser)
+                    MaterialTheme.colorScheme.onPrimary
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
@@ -199,39 +273,6 @@ private fun SystemPromptInput(
             maxLines = 3,
             textStyle = MaterialTheme.typography.bodyMedium
         )
-    }
-}
-
-@Composable
-private fun MessageBubble(message: ChatMessage) {
-    val isUser = message.role == ChatMessage.Role.USER
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
-    ) {
-        Surface(
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = if (isUser) 16.dp else 4.dp,
-                bottomEnd = if (isUser) 4.dp else 16.dp
-            ),
-            color = if (isUser)
-                MaterialTheme.colorScheme.primary
-            else
-                MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.widthIn(max = 300.dp)
-        ) {
-            Text(
-                text = message.content,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                color = if (isUser)
-                    MaterialTheme.colorScheme.onPrimary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
     }
 }
 
