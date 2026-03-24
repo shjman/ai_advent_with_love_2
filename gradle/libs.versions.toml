@@ -15,6 +15,7 @@ coroutines = "1.10.1"
 okhttp = "4.12.0"
 anthropic = "0.8.0"
 timber = "5.0.1"
+navigation = "2.8.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -41,6 +42,7 @@ okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor",
 anthropic-java = { group = "com.anthropic", name = "anthropic-java", version.ref = "anthropic" }
 desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version = "2.1.5" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

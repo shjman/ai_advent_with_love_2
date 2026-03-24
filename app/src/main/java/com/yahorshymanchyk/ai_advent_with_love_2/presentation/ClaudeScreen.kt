@@ -22,7 +22,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,7 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.ChatMessage
 
 @Composable
-fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
+fun ClaudeScreen(paddingValues: PaddingValues, viewModel: ClaudeViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
     var maxTokensInput by remember { mutableStateOf("512") }
@@ -66,12 +65,11 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
         if (itemCount > 0) listState.animateScrollToItem(itemCount - 1)
     }
 
-    Scaffold { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+    ) {
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
@@ -134,7 +132,6 @@ fun ClaudeScreen(viewModel: ClaudeViewModel = hiltViewModel()) {
                 isSendEnabled = inputText.isNotBlank() && isMaxTokensValid && !uiState.isLoading
             )
             PoweredByFooter()
-        }
     }
 }
 
