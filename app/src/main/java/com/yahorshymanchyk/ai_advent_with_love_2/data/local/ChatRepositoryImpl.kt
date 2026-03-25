@@ -35,6 +35,11 @@ class ChatRepositoryImpl(
         return entity.copy(id = id).toChat()
     }
 
+    override suspend fun updateChatName(chatId: Long, name: String) {
+        val existing = chatDao.getChatById(chatId) ?: return
+        chatDao.updateChat(existing.copy(name = name, updatedAt = System.currentTimeMillis()))
+    }
+
     override suspend fun updateChatSettings(
         chatId: Long,
         maxTokens: Int,

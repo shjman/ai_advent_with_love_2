@@ -9,6 +9,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,6 +24,8 @@ class ClaudeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ClaudeUiState())
     val uiState: StateFlow<ClaudeUiState> = _uiState.asStateFlow()
 
+    private val currentChatId = MutableStateFlow<Long?>(null)
+
     init {
         viewModelScope.launch {
             val chat = chatRepository.getLatestChat() ?: chatRepository.createChat()
@@ -34,10 +38,22 @@ class ClaudeViewModel @Inject constructor(
                     stopSequenceInput = chat.stopSequence ?: ""
                 )
             }
-            chatRepository.getMessagesForChat(chat.id).collect { messages ->
-                _uiState.update { it.copy(messages = messages) }
-            }
+            currentChatId.value = chat.id
         }
+
+        viewModelScope.launch {
+            currentChatId
+                .filterNotNull()
+                .flatMapLatest { chatId -> chatRepository.getMessagesForChat(chatId) }
+                .collect { messages -> _uiState.update { it.copy(messages = messages) } }
+        }
+    }
+
+    fun updateChatName(name: String) {
+        _uiState.update { it.copy(chatName = name) }
+        val chatId = _uiState.value.chatId
+        if (chatId == -1L) return
+        viewModelScope.launch { chatRepository.updateChatName(chatId, name) }
     }
 
     fun updateMaxTokens(value: String) = _uiState.update { it.copy(maxTokensInput = value) }
@@ -68,6 +84,17 @@ class ClaudeViewModel @Inject constructor(
                 .onFailure { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.message ?: "Unknown error") }
                 }
+        }
+    }
+
+    fun startNewChat() {
+        viewModelScope.launch {
+            val chat = chatRepository.createChat()
+            _uiState.value = ClaudeUiState(
+                chatId = chat.id,
+                chatName = chat.name
+            )
+            currentChatId.value = chat.id
         }
     }
 }

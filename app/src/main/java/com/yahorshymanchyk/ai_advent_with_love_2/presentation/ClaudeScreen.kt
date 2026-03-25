@@ -22,7 +22,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +35,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -64,6 +67,7 @@ fun ClaudeScreen(paddingValues: PaddingValues, viewModel: ClaudeViewModel = hilt
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
+    var showNewChatDialog by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val clipboard = LocalClipboard.current
     val clipboardScope = rememberCoroutineScope()
@@ -88,10 +92,13 @@ fun ClaudeScreen(paddingValues: PaddingValues, viewModel: ClaudeViewModel = hilt
         CenterAlignedTopAppBar(
             title = { Text(uiState.chatName) },
             navigationIcon = {
-                IconButton(
-                    onClick = { showSettings = true },
-                ) {
+                IconButton(onClick = { showSettings = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Chat settings")
+                }
+            },
+            actions = {
+                IconButton(onClick = { showNewChatDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "New chat")
                 }
             },
             modifier = Modifier.height(56.dp),
@@ -138,12 +145,35 @@ fun ClaudeScreen(paddingValues: PaddingValues, viewModel: ClaudeViewModel = hilt
         PoweredByFooter()
     }
 
+    if (showNewChatDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewChatDialog = false },
+            title = { Text("Start new chat?") },
+            text = { Text("Current chat will be saved. A new chat will start with default settings.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.startNewChat()
+                    showNewChatDialog = false
+                }) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewChatDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
     if (showSettings) {
         ModalBottomSheet(
             onDismissRequest = { showSettings = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             ChatSettingsSheet(
+                chatName = uiState.chatName,
+                onChatNameChange = viewModel::updateChatName,
                 maxTokensInput = uiState.maxTokensInput,
                 onMaxTokensChange = viewModel::updateMaxTokens,
                 isMaxTokensValid = isMaxTokensValid,
@@ -158,6 +188,8 @@ fun ClaudeScreen(paddingValues: PaddingValues, viewModel: ClaudeViewModel = hilt
 
 @Composable
 private fun ChatSettingsSheet(
+    chatName: String,
+    onChatNameChange: (String) -> Unit,
     maxTokensInput: String,
     onMaxTokensChange: (String) -> Unit,
     isMaxTokensValid: Boolean,
@@ -178,6 +210,20 @@ private fun ChatSettingsSheet(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 4.dp)
         )
+        Column {
+            Text(
+                text = "chat name",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = chatName,
+                onValueChange = onChatNameChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium
+            )
+        }
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.Top
