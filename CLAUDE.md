@@ -5,11 +5,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Working Style
 
 Before starting any implementation:
-1. Analyze and evaluate the proposed requirements to develop the best plan during requirements gathering.
-2. Ask clarifying questions you think might help.
-3. Prepare a detailed step-by-step plan and present it before writing any code.
+1. Read and analyze the request carefully.
+2. Ask clarifying questions — as many as needed — until requirements are unambiguous. Do not assume; ask. Prefer multiple short rounds of questions over starting with incomplete information.
+3. If you have multiple approaches to solve the problem, outline them and ask which one to pursue rather than choosing silently.
+4. If the request is large or complex, break it down into smaller sub-tasks and ask for approval on the breakdown before proceeding.
+5. If the request involves modifying existing code, review the relevant code sections first and ask any questions needed to understand the current implementation before proposing changes.
+6. If you have some disagreement with requirement or think there is a better way to achieve the underlying goal, explain your perspective and ask if you should proceed with the original requirements or your proposed alternative.
+7. Present a detailed step-by-step plan and wait for explicit approval before writing any code.
+8. If a decision arises during planning that has meaningful alternatives, surface it and ask which direction to take rather than choosing silently.
 
-Proceed and make decisions step by step throughout implementation. Once complete, verify the solution compiles by running `./gradlew assembleDebug`.
+During implementation:
+- Proceed step by step. After each significant decision point or unexpected finding, pause and check in with the user before continuing.
+- If something discovered mid-implementation changes the original plan, stop and discuss rather than adapting unilaterally.
+
+Once complete, verify the solution compiles by running `./gradlew assembleDebug`.
 
 ## Build Commands
 
