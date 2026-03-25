@@ -1,4 +1,4 @@
-package com.yahorshymanchyk.ai_advent_with_love_2.presentation
+package com.yahorshymanchyk.ai_advent_with_love_2.presentation.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email

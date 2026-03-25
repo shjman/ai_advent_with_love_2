@@ -1,4 +1,4 @@
-package com.yahorshymanchyk.ai_advent_with_love_2.presentation
+package com.yahorshymanchyk.ai_advent_with_love_2.presentation.navigation
 
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -11,6 +11,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.yahorshymanchyk.ai_advent_with_love_2.presentation.chats.ChatsScreen
+import com.yahorshymanchyk.ai_advent_with_love_2.presentation.home.HomeScreen
+import com.yahorshymanchyk.ai_advent_with_love_2.presentation.settings.SettingsScreen
 
 @Composable
 fun AppNavigation() {
@@ -46,7 +49,7 @@ fun AppNavigation() {
             startDestination = Screen.Home.route
         ) {
             composable(Screen.Home.route) {
-                ClaudeScreen(paddingValues = innerPadding)
+                HomeScreen(paddingValues = innerPadding)
             }
             composable(Screen.Chats.route) {
                 ChatsScreen(paddingValues = innerPadding)

@@ -1,4 +1,4 @@
-package com.yahorshymanchyk.ai_advent_with_love_2.presentation
+package com.yahorshymanchyk.ai_advent_with_love_2.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,13 +16,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class ClaudeViewModel @Inject constructor(
+class HomeViewModel @Inject constructor(
     private val sendMessageUseCase: SendMessageUseCase,
     private val chatRepository: ChatRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ClaudeUiState())
-    val uiState: StateFlow<ClaudeUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(HomeUiState())
+    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private val currentChatId = MutableStateFlow<Long?>(null)
 
@@ -90,7 +90,7 @@ class ClaudeViewModel @Inject constructor(
     fun startNewChat() {
         viewModelScope.launch {
             val chat = chatRepository.createChat()
-            _uiState.value = ClaudeUiState(
+            _uiState.value = HomeUiState(
                 chatId = chat.id,
                 chatName = chat.name
             )

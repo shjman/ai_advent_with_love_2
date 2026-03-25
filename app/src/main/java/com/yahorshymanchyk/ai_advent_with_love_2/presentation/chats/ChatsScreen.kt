@@ -1,4 +1,4 @@
-package com.yahorshymanchyk.ai_advent_with_love_2.presentation
+package com.yahorshymanchyk.ai_advent_with_love_2.presentation.chats
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues

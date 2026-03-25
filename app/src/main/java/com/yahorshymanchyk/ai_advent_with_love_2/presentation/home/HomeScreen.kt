@@ -1,4 +1,4 @@
-package com.yahorshymanchyk.ai_advent_with_love_2.presentation
+package com.yahorshymanchyk.ai_advent_with_love_2.presentation.home
 
 import android.content.ClipData
 import android.widget.Toast
@@ -63,7 +63,7 @@ import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.ChatMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClaudeScreen(paddingValues: PaddingValues, viewModel: ClaudeViewModel = hiltViewModel()) {
+fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
