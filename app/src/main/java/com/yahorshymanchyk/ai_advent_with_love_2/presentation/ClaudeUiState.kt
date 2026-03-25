@@ -3,7 +3,12 @@ package com.yahorshymanchyk.ai_advent_with_love_2.presentation
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.ChatMessage
 
 data class ClaudeUiState(
+    val chatId: Long = -1L,
+    val chatName: String = "",
     val messages: List<ChatMessage> = emptyList(),
+    val maxTokensInput: String = "512",
+    val stopSequenceInput: String = "",
+    val systemPromptInput: String = "",
     val isLoading: Boolean = false,
     val error: String? = null
 )

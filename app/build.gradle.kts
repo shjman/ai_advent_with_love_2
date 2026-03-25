@@ -14,6 +14,8 @@ if (localPropertiesFile.exists()) {
 }
 val claudeApiKey: String = localProperties.getProperty("CLAUDE_API_KEY", "")
 
+val moduleDatabase = ":database"
+
 android {
     namespace = "com.yahorshymanchyk.ai_advent_with_love_2"
     compileSdk {
@@ -73,6 +75,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+
+    // Database module
+    implementation(project(moduleDatabase))
 
     // Navigation
     implementation(libs.androidx.navigation.compose)

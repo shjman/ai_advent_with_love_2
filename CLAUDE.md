@@ -21,22 +21,41 @@ Proceed and make decisions step by step throughout implementation. Once complete
 ./gradlew installDebug           # Build and install on connected device/emulator
 ```
 
+## Modules
+
+| Module      | Purpose |
+|-------------|---------|
+| `:app`      | Presentation, domain, data layers; DI wiring |
+| `:database` | Room database — entities, DAOs, `AppDatabase` |
+
+Module path constants are declared as `val` at the top of each `build.gradle.kts` (e.g. `val moduleDatabase = ":database"`) — never hardcode module name strings in dependency declarations.
+
 ## Architecture
 
-Clean Architecture + MVVM, single `:app` module.
+Clean Architecture + MVVM across `:app` and `:database` modules.
 
 ```
-presentation/   →  domain/   →   data/
-ClaudeScreen        model          ClaudeApiService
-ClaudeViewModel     repository     ClaudeRepositoryImpl
-ClaudeUiState       usecase
+:app
+  presentation/   →  domain/          →  data/
+  ClaudeScreen        model               ClaudeApiService
+  ClaudeViewModel     repository          ClaudeRepositoryImpl
+  ChatsScreen         usecase             ChatRepositoryImpl
+  ChatsViewModel
+  AppNavigation
+
+:database
+  entity/   →  dao/       →  AppDatabase
+  ChatEntity   ChatDao
+  MessageEntity  MessageDao
 ```
 
-**Request flow:** `ClaudeScreen` → `ClaudeViewModel.sendMessage()` → `SendMessageUseCase` → `ClaudeRepository` → `ClaudeApiService` → Anthropic SDK
+**Message send flow:** `ClaudeScreen` → `ClaudeViewModel.sendMessage()` → saves user msg to DB → `SendMessageUseCase` → `ClaudeRepository` → `ClaudeApiService` → Anthropic SDK → saves assistant msg to DB
 
-**State:** `ClaudeViewModel` holds `StateFlow<ClaudeUiState>` (messages list, isLoading, error). Each send call preserves the full message history and passes it to the API for multi-turn conversation.
+**Chat persistence flow:** `ClaudeViewModel` init → `ChatRepository.getLatestChat()` (or `createChat()`) → collects `getMessagesForChat()` Flow → updates `ClaudeUiState`
 
-**DI:** `AppModule` wires `AnthropicClient` → `ClaudeApiService` → `ClaudeRepositoryImpl` → `SendMessageUseCase`. `NetworkModule` provides a singleton `OkHttpClient`.
+**State:** `ClaudeViewModel` holds `StateFlow<ClaudeUiState>` (chatId, chatName, messages, settings, isLoading, error). Messages are driven by a Room Flow so they auto-update from DB writes.
+
+**DI:** `AppModule` wires Anthropic stack. `DatabaseModule` wires `AppDatabase` → DAOs → `ChatRepository`. `NetworkModule` provides a singleton `OkHttpClient`.
 
 ## Key Build Constraints
 

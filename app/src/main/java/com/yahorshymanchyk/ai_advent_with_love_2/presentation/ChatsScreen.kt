@@ -1,5 +1,6 @@
 package com.yahorshymanchyk.ai_advent_with_love_2.presentation
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,37 +11,52 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-
-private val stubChats = listOf(
-    "How do I reverse a string in Kotlin?",
-    "Explain coroutines vs threads",
-    "Best practices for REST API design",
-    "What is dependency injection?",
-    "Difference between val and var",
-    "How does garbage collection work?",
-    "Jetpack Compose vs XML layouts",
-    "What is a monad?",
-)
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.Chat
 
 @Composable
-fun ChatsScreen(paddingValues: PaddingValues) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
-        contentPadding = PaddingValues(vertical = 8.dp)
-    ) {
-        items(stubChats) { name ->
+fun ChatsScreen(
+    paddingValues: PaddingValues,
+    viewModel: ChatsViewModel = hiltViewModel()
+) {
+    val chats by viewModel.chats.collectAsStateWithLifecycle()
+
+    if (chats.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
             Text(
-                text = name,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                style = MaterialTheme.typography.bodyLarge
+                text = "No chats yet",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            items(chats, key = { it.id }) { chat ->
+                ChatItem(chat)
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
         }
     }
+}
+
+@Composable
+private fun ChatItem(chat: Chat) {
+    Text(
+        text = chat.name,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        style = MaterialTheme.typography.bodyLarge
+    )
 }

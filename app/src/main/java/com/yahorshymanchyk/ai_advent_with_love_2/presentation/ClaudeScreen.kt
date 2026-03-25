@@ -1,5 +1,6 @@
 package com.yahorshymanchyk.ai_advent_with_love_2.presentation
 
+import android.content.ClipData
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -7,8 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,23 +21,36 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -42,19 +58,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.ChatMessage
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClaudeScreen(paddingValues: PaddingValues, viewModel: ClaudeViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
-    var maxTokensInput by remember { mutableStateOf("512") }
-    var stopSequenceInput by remember { mutableStateOf("") }
-    var systemPromptInput by remember { mutableStateOf("") }
+    var showSettings by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val clipboardScope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    val maxTokensValue = maxTokensInput.toIntOrNull()
-    val isMaxTokensValid = maxTokensValue != null && maxTokensValue > 0
+    val isMaxTokensValid = uiState.maxTokensInput.toIntOrNull()?.let { it > 0 } ?: false
 
     val error = uiState.error
     val itemCount = uiState.messages.size +
@@ -70,68 +85,117 @@ fun ClaudeScreen(paddingValues: PaddingValues, viewModel: ClaudeViewModel = hilt
             .fillMaxSize()
             .padding(paddingValues)
     ) {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                state = listState,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                itemsIndexed(uiState.messages) { index, message ->
-                    MessageBubble(
-                        message = message,
-                        onLongClick = {
-                            val text = buildQAText(uiState.messages, index)
-                            clipboardManager.setText(AnnotatedString(text))
-                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
-                        }
-                    )
+        CenterAlignedTopAppBar(
+            title = { Text(uiState.chatName) },
+            navigationIcon = {
+                IconButton(
+                    onClick = { showSettings = true },
+                ) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Chat settings")
                 }
-                if (uiState.isLoading) {
-                    item { LoadingBubble() }
-                }
-                if (error != null) {
-                    item { ErrorBubble(error) }
-                }
-            }
+            },
+            modifier = Modifier.height(56.dp),
+            windowInsets = WindowInsets(0)
+        )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                MaxTokensInput(
-                    value = maxTokensInput,
-                    onValueChange = { maxTokensInput = it },
-                    isError = !isMaxTokensValid
-                )
-                StopSequenceInput(
-                    value = stopSequenceInput,
-                    onValueChange = { stopSequenceInput = it }
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            state = listState,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            itemsIndexed(uiState.messages) { index, message ->
+                MessageBubble(
+                    message = message,
+                    onLongClick = {
+                        val text = buildQAText(uiState.messages, index)
+                        clipboardScope.launch {
+                            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
+                        }
+                        Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                    }
                 )
             }
-            SystemPromptInput(
-                value = systemPromptInput,
-                onValueChange = { systemPromptInput = it }
+            if (uiState.isLoading) {
+                item { LoadingBubble() }
+            }
+            if (error != null) {
+                item { ErrorBubble(error) }
+            }
+        }
+
+        InputSection(
+            text = inputText,
+            onTextChange = { inputText = it },
+            onSend = {
+                viewModel.sendMessage(inputText)
+                inputText = ""
+            },
+            isSendEnabled = inputText.isNotBlank() && isMaxTokensValid && !uiState.isLoading
+        )
+        PoweredByFooter()
+    }
+
+    if (showSettings) {
+        ModalBottomSheet(
+            onDismissRequest = { showSettings = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            ChatSettingsSheet(
+                maxTokensInput = uiState.maxTokensInput,
+                onMaxTokensChange = viewModel::updateMaxTokens,
+                isMaxTokensValid = isMaxTokensValid,
+                stopSequenceInput = uiState.stopSequenceInput,
+                onStopSequenceChange = viewModel::updateStopSequence,
+                systemPromptInput = uiState.systemPromptInput,
+                onSystemPromptChange = viewModel::updateSystemPrompt
             )
-            InputSection(
-                text = inputText,
-                onTextChange = { inputText = it },
-                onSend = {
-                    viewModel.sendMessage(
-                        inputText,
-                        maxTokensValue!!,
-                        stopSequenceInput.takeIf { it.isNotBlank() },
-                        systemPromptInput.takeIf { it.isNotBlank() }
-                    )
-                    inputText = ""
-                },
-                isSendEnabled = inputText.isNotBlank() && isMaxTokensValid && !uiState.isLoading
+        }
+    }
+}
+
+@Composable
+private fun ChatSettingsSheet(
+    maxTokensInput: String,
+    onMaxTokensChange: (String) -> Unit,
+    isMaxTokensValid: Boolean,
+    stopSequenceInput: String,
+    onStopSequenceChange: (String) -> Unit,
+    systemPromptInput: String,
+    onSystemPromptChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.5f)
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Chat settings",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            MaxTokensInput(
+                value = maxTokensInput,
+                onValueChange = onMaxTokensChange,
+                isError = !isMaxTokensValid
             )
-            PoweredByFooter()
+            StopSequenceInput(
+                value = stopSequenceInput,
+                onValueChange = onStopSequenceChange
+            )
+        }
+        SystemPromptInput(
+            value = systemPromptInput,
+            onValueChange = onSystemPromptChange
+        )
     }
 }
 
@@ -145,6 +209,7 @@ private fun buildQAText(messages: List<ChatMessage>, index: Int): String {
             if (answer != null) "Q: ${message.content}\n\nA: $answer"
             else "Q: ${message.content}"
         }
+
         ChatMessage.Role.ASSISTANT -> {
             val question = messages.getOrNull(index - 1)
                 ?.takeIf { it.role == ChatMessage.Role.USER }
@@ -205,7 +270,7 @@ private fun MaxTokensInput(
             text = "maxTokens",
             style = MaterialTheme.typography.labelMedium,
             color = if (isError) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.onSurfaceVariant
         )
         OutlinedTextField(
             value = value,
@@ -254,9 +319,7 @@ private fun SystemPromptInput(
     value: String,
     onValueChange: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-    ) {
+    Column {
         Text(
             text = "system_prompt",
             style = MaterialTheme.typography.labelMedium,
@@ -280,7 +343,12 @@ private fun LoadingBubble() {
         horizontalArrangement = Arrangement.Start
     ) {
         Surface(
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 4.dp),
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomEnd = 16.dp,
+                bottomStart = 4.dp
+            ),
             color = MaterialTheme.colorScheme.surfaceVariant
         ) {
             CircularProgressIndicator(
@@ -300,7 +368,12 @@ private fun ErrorBubble(error: String) {
         horizontalArrangement = Arrangement.Start
     ) {
         Surface(
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 4.dp),
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomEnd = 16.dp,
+                bottomStart = 4.dp
+            ),
             color = MaterialTheme.colorScheme.errorContainer
         ) {
             Text(
