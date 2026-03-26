@@ -1,5 +1,6 @@
 package com.yahorshymanchyk.ai_advent_with_love_2.presentation.chats
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun ChatsScreen(
     paddingValues: PaddingValues,
+    onChatSelected: (Long) -> Unit,
     viewModel: ChatsViewModel = hiltViewModel()
 ) {
     val chats by viewModel.chats.collectAsStateWithLifecycle()
@@ -42,8 +44,7 @@ fun ChatsScreen(
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             items(chats, key = { it.id }) { chat ->
-                ChatItem(chat)
-
+                ChatItem(chat, onClick = { onChatSelected(chat.id) })
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
@@ -51,11 +52,12 @@ fun ChatsScreen(
 }
 
 @Composable
-private fun ChatItem(chat: ChatUiModel) {
+private fun ChatItem(chat: ChatUiModel, onClick: () -> Unit) {
     Text(
         text = chat.name,
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         style = MaterialTheme.typography.bodyLarge
     )

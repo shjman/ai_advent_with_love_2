@@ -21,6 +21,9 @@ class ChatRepositoryImpl(
     override suspend fun getLatestChat(): Chat? =
         chatDao.getLatestChat()?.toChat()
 
+    override suspend fun getChatById(chatId: Long): Chat? =
+        chatDao.getChatById(chatId)?.toChat()
+
     override suspend fun createChat(): Chat {
         val now = System.currentTimeMillis()
         val entity = ChatEntity(

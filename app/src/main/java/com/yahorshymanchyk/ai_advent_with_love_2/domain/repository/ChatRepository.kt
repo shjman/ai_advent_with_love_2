@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 interface ChatRepository {
     fun getAllChats(): Flow<List<Chat>>
     suspend fun getLatestChat(): Chat?
+    suspend fun getChatById(chatId: Long): Chat?
     suspend fun createChat(): Chat
     suspend fun updateChatName(chatId: Long, name: String)
     suspend fun updateChatSettings(chatId: Long, maxTokens: Int, systemPrompt: String?, stopSequence: String?)

@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,8 +38,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,11 +47,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
-import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -59,11 +57,52 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    when (val state = uiState) {
+        is HomeUiState.Loading -> LoadingContent(paddingValues)
+        is HomeUiState.Error -> ErrorContent(paddingValues, state.message)
+        is HomeUiState.Success -> SuccessContent(paddingValues, state, viewModel)
+    }
+}
+
+@Composable
+private fun LoadingContent(paddingValues: PaddingValues) {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(paddingValues),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
+private fun ErrorContent(paddingValues: PaddingValues, message: String) {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(paddingValues),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SuccessContent(
+    paddingValues: PaddingValues,
+    state: HomeUiState.Success,
+    viewModel: HomeViewModel
+) {
     var inputText by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
     var showNewChatDialog by remember { mutableStateOf(false) }
@@ -72,12 +111,10 @@ fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltView
     val clipboardScope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    val isMaxTokensValid = uiState.maxTokensInput.toIntOrNull()?.let { it > 0 } ?: false
-
-    val error = uiState.error
-    val itemCount = uiState.messages.size +
-            (if (uiState.isLoading) 1 else 0) +
-            (if (error != null) 1 else 0)
+    val isMaxTokensValid = state.maxTokensInput.toIntOrNull()?.let { it > 0 } ?: false
+    val itemCount = state.messages.size +
+            (if (state.isSending) 1 else 0) +
+            (if (state.sendError != null) 1 else 0)
 
     LaunchedEffect(itemCount) {
         if (itemCount > 0) listState.animateScrollToItem(itemCount - 1)
@@ -89,7 +126,7 @@ fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltView
             .padding(paddingValues)
     ) {
         CenterAlignedTopAppBar(
-            title = { Text(uiState.chatName) },
+            title = { Text(state.chatName) },
             navigationIcon = {
                 IconButton(onClick = { showSettings = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Chat settings")
@@ -105,18 +142,16 @@ fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltView
         )
 
         LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
             state = listState,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            itemsIndexed(uiState.messages) { index, message ->
+            itemsIndexed(state.messages) { index, message ->
                 MessageBubble(
                     message = message,
                     onLongClick = {
-                        val text = buildQAText(uiState.messages, index)
+                        val text = buildQAText(state.messages, index)
                         clipboardScope.launch {
                             clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
                         }
@@ -124,11 +159,11 @@ fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltView
                     }
                 )
             }
-            if (uiState.isLoading) {
+            if (state.isSending) {
                 item { LoadingBubble() }
             }
-            if (error != null) {
-                item { ErrorBubble(error) }
+            if (state.sendError != null) {
+                item { ErrorBubble(state.sendError) }
             }
         }
 
@@ -139,9 +174,9 @@ fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltView
                 viewModel.sendMessage(inputText)
                 inputText = ""
             },
-            isSendEnabled = inputText.isNotBlank() && isMaxTokensValid && !uiState.isLoading
+            isSendEnabled = inputText.isNotBlank() && isMaxTokensValid && !state.isSending
         )
-        TokenFooter(expectedInputTokens = uiState.expectedInputTokens)
+        TokenFooter(expectedInputTokens = state.expectedInputTokens)
     }
 
     if (showNewChatDialog) {
@@ -153,14 +188,10 @@ fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltView
                 TextButton(onClick = {
                     viewModel.startNewChat()
                     showNewChatDialog = false
-                }) {
-                    Text("Yes")
-                }
+                }) { Text("Yes") }
             },
             dismissButton = {
-                TextButton(onClick = { showNewChatDialog = false }) {
-                    Text("No")
-                }
+                TextButton(onClick = { showNewChatDialog = false }) { Text("No") }
             }
         )
     }
@@ -171,14 +202,14 @@ fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltView
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             ChatSettingsSheet(
-                chatName = uiState.chatName,
+                chatName = state.chatName,
                 onChatNameChange = viewModel::updateChatName,
-                maxTokensInput = uiState.maxTokensInput,
+                maxTokensInput = state.maxTokensInput,
                 onMaxTokensChange = viewModel::updateMaxTokens,
                 isMaxTokensValid = isMaxTokensValid,
-                stopSequenceInput = uiState.stopSequenceInput,
+                stopSequenceInput = state.stopSequenceInput,
                 onStopSequenceChange = viewModel::updateStopSequence,
-                systemPromptInput = uiState.systemPromptInput,
+                systemPromptInput = state.systemPromptInput,
                 onSystemPromptChange = viewModel::updateSystemPrompt
             )
         }
@@ -270,24 +301,17 @@ private fun MessageBubble(message: MessageUiModel, onLongClick: () -> Unit) {
                 bottomStart = if (isUser) 16.dp else 4.dp,
                 bottomEnd = if (isUser) 4.dp else 16.dp
             ),
-            color = if (isUser)
-                MaterialTheme.colorScheme.primary
-            else
-                MaterialTheme.colorScheme.surfaceVariant,
+            color = if (isUser) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier
                 .widthIn(max = 300.dp)
-                .combinedClickable(
-                    onClick = {},
-                    onLongClick = onLongClick
-                )
+                .combinedClickable(onClick = {}, onLongClick = onLongClick)
         ) {
             Text(
                 text = message.content,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                color = if (isUser)
-                    MaterialTheme.colorScheme.onPrimary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isUser) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -295,11 +319,7 @@ private fun MessageBubble(message: MessageUiModel, onLongClick: () -> Unit) {
 }
 
 @Composable
-private fun MaxTokensInput(
-    value: String,
-    onValueChange: (String) -> Unit,
-    isError: Boolean
-) {
+private fun MaxTokensInput(value: String, onValueChange: (String) -> Unit, isError: Boolean) {
     Column {
         Text(
             text = "maxTokens",
@@ -328,10 +348,7 @@ private fun MaxTokensInput(
 }
 
 @Composable
-private fun StopSequenceInput(
-    value: String,
-    onValueChange: (String) -> Unit
-) {
+private fun StopSequenceInput(value: String, onValueChange: (String) -> Unit) {
     Column {
         Text(
             text = "stopSequence",
@@ -350,10 +367,7 @@ private fun StopSequenceInput(
 }
 
 @Composable
-private fun SystemPromptInput(
-    value: String,
-    onValueChange: (String) -> Unit
-) {
+private fun SystemPromptInput(value: String, onValueChange: (String) -> Unit) {
     Column {
         Text(
             text = "system_prompt",
@@ -373,23 +387,13 @@ private fun SystemPromptInput(
 
 @Composable
 private fun LoadingBubble() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomEnd = 16.dp,
-                bottomStart = 4.dp
-            ),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 4.dp),
             color = MaterialTheme.colorScheme.surfaceVariant
         ) {
             CircularProgressIndicator(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .size(20.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).size(20.dp),
                 strokeWidth = 2.dp
             )
         }
@@ -398,17 +402,9 @@ private fun LoadingBubble() {
 
 @Composable
 private fun ErrorBubble(error: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomEnd = 16.dp,
-                bottomStart = 4.dp
-            ),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 4.dp),
             color = MaterialTheme.colorScheme.errorContainer
         ) {
             Text(
@@ -429,9 +425,7 @@ private fun InputSection(
     isSendEnabled: Boolean
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -442,10 +436,7 @@ private fun InputSection(
             placeholder = { Text("Type a message...") },
             maxLines = 4
         )
-        Button(
-            onClick = onSend,
-            enabled = isSendEnabled
-        ) {
+        Button(onClick = onSend, enabled = isSendEnabled) {
             Text("Send")
         }
     }
@@ -453,12 +444,10 @@ private fun InputSection(
 
 @Composable
 private fun TokenFooter(expectedInputTokens: Int?) {
-    val text = if (expectedInputTokens != null) "expected input tokens: $expectedInputTokens" else ""
+    val text = if (expectedInputTokens != null) "expected input tokens base on history: $expectedInputTokens" else ""
     Text(
         text = text,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         textAlign = TextAlign.Center,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
