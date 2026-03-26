@@ -13,4 +13,7 @@ class ClaudeRepositoryImpl(private val apiService: ClaudeApiService) : ClaudeRep
                 content = apiService.sendMessage(history, maxTokens, stopSequence, systemPrompt)
             )
         }
+
+    override suspend fun countTokens(history: List<ChatMessage>, systemPrompt: String?): Result<Int> =
+        runCatching { apiService.countTokens(history, systemPrompt) }
 }

@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.ChatMessage
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.repository.ChatRepository
-import com.yahorshymanchyk.ai_advent_with_love_2.presentation.home.toUiModel
+import com.yahorshymanchyk.ai_advent_with_love_2.domain.repository.ClaudeRepository
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.SendMessageUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val sendMessageUseCase: SendMessageUseCase,
-    private val chatRepository: ChatRepository
+    private val chatRepository: ChatRepository,
+    private val claudeRepository: ClaudeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -46,7 +47,22 @@ class HomeViewModel @Inject constructor(
             currentChatId
                 .filterNotNull()
                 .flatMapLatest { chatId -> chatRepository.getMessagesForChat(chatId) }
-                .collect { messages -> _uiState.update { it.copy(messages = messages.map { it.toUiModel() }) } }
+                .collect { messages ->
+                    _uiState.update { it.copy(messages = messages.map { it.toUiModel() }) }
+                    refreshTokenCount(messages)
+                }
+        }
+    }
+
+    private fun refreshTokenCount(history: List<ChatMessage>) {
+        if (history.isEmpty()) {
+            _uiState.update { it.copy(expectedInputTokens = null) }
+            return
+        }
+        val systemPrompt = _uiState.value.systemPromptInput.takeIf { it.isNotBlank() }
+        viewModelScope.launch {
+            claudeRepository.countTokens(history, systemPrompt)
+                .onSuccess { count -> _uiState.update { it.copy(expectedInputTokens = count) } }
         }
     }
 

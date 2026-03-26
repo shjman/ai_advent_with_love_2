@@ -4,4 +4,5 @@ import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.ChatMessage
 
 interface ClaudeRepository {
     suspend fun sendMessage(history: List<ChatMessage>, maxTokens: Int, stopSequence: String?, systemPrompt: String?): Result<ChatMessage>
+    suspend fun countTokens(history: List<ChatMessage>, systemPrompt: String?): Result<Int>
 }

@@ -141,7 +141,7 @@ fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltView
             },
             isSendEnabled = inputText.isNotBlank() && isMaxTokensValid && !uiState.isLoading
         )
-        PoweredByFooter()
+        TokenFooter(expectedInputTokens = uiState.expectedInputTokens)
     }
 
     if (showNewChatDialog) {
@@ -452,9 +452,10 @@ private fun InputSection(
 }
 
 @Composable
-private fun PoweredByFooter() {
+private fun TokenFooter(expectedInputTokens: Int?) {
+    val text = if (expectedInputTokens != null) "expected input tokens: $expectedInputTokens" else ""
     Text(
-        text = "powered by claude",
+        text = text,
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
