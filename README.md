@@ -1,23 +1,26 @@
 # AI Advent with Love
 
-An Android chat application powered by the Anthropic Claude API. Supports multiple persistent chat sessions with per-chat settings, built with Jetpack Compose and Clean Architecture.
+An Android chat application powered by the Anthropic Claude API. Supports multiple persistent chat sessions with per-chat settings, built with Jetpack Compose and Clean Architecture across a multi-module Gradle project.
 
 ## Features
 
 - **Multi-session chat** — create and manage multiple independent chat sessions
-- **Persistent history** — all messages and settings are stored locally in a Room database and survive app restarts
+- **Persistent history** — all messages and settings stored locally in a Room database, survive app restarts
 - **Per-chat configuration** — each chat stores its own name, max tokens, system prompt, and stop sequence
+- **Chat switching** — tap any chat in the Chats tab to open it in the Home tab instantly
 - **Rename chats** — edit the chat name directly from the settings sheet
 - **Bottom navigation** — Home (active chat), Chats (session list), Settings tabs
 - **Chat settings sheet** — half-screen bottom sheet for all per-chat parameters, opened via the ⋮ button
 - **New chat** — start a fresh session (with confirmation dialog) via the + button in the toolbar
 - **Message copy** — long-press any message bubble to copy the Q&A pair to clipboard
+- **Expected token count** — footer shows the pre-flight token estimate for the current conversation history
+- **Typed UI states** — Home screen has distinct `Loading`, `Success`, and `Error` states
 - **Material 3** — dynamic color (Android 12+), dark/light theme support
 
 ## Tech Stack
 
 | Area | Library / Version |
-|---|---|
+|------|-------------------|
 | Language | Kotlin 2.2.10 |
 | UI | Jetpack Compose + Material 3 (BOM 2024.09.00) |
 | Navigation | Navigation Compose 2.8.0 |
@@ -34,79 +37,104 @@ An Android chat application powered by the Anthropic Claude API. Supports multip
 
 ```
 .
-├── app/                          # Main application module
-│   └── src/main/java/.../
-│       ├── presentation/
-│       │   ├── AppNavigation.kt  # Single Scaffold + NavHost + BottomNavigationBar
-│       │   ├── Screen.kt         # Bottom tab route definitions
-│       │   ├── ClaudeScreen.kt   # Active chat UI (toolbar, messages, input, sheets)
-│       │   ├── ClaudeViewModel.kt
-│       │   ├── ClaudeUiState.kt
-│       │   ├── ChatsScreen.kt    # Persisted chat session list
-│       │   ├── ChatsViewModel.kt
-│       │   └── SettingsScreen.kt # Placeholder
-│       ├── domain/
-│       │   ├── model/
-│       │   │   ├── Chat.kt       # Chat session domain model
-│       │   │   └── ChatMessage.kt
-│       │   ├── repository/
-│       │   │   ├── ChatRepository.kt   # Local persistence interface
-│       │   │   └── ClaudeRepository.kt # API interface
-│       │   └── usecase/
-│       │       └── SendMessageUseCase.kt
-│       ├── data/
-│       │   ├── local/
-│       │   │   └── ChatRepositoryImpl.kt  # Room-backed implementation
-│       │   ├── remote/
-│       │   │   └── ClaudeApiService.kt    # Anthropic SDK wrapper
-│       │   └── repository/
-│       │       └── ClaudeRepositoryImpl.kt
-│       └── di/
-│           ├── AppModule.kt      # Anthropic client + use case wiring
-│           ├── DatabaseModule.kt # Room DB + DAO + ChatRepository wiring
-│           └── NetworkModule.kt  # OkHttpClient
+├── domain-models/                      # Pure Kotlin JVM — no Android deps
+│   └── src/main/kotlin/.../domain/model/
+│       ├── Chat.kt
+│       └── ChatMessage.kt
 │
-└── database/                     # Room database module
-    └── src/main/java/.../database/
-        ├── AppDatabase.kt
-        ├── entity/
-        │   ├── ChatEntity.kt     # chats table
-        │   └── MessageEntity.kt  # messages table (FK → chats, CASCADE delete)
-        └── dao/
-            ├── ChatDao.kt
-            └── MessageDao.kt
+├── feature-claude/                     # Self-contained Claude API feature
+│   └── src/main/java/.../
+│       ├── data/remote/
+│       │   └── ClaudeApiService.kt     # Anthropic SDK wrapper (send + countTokens)
+│       ├── data/repository/
+│       │   └── ClaudeRepositoryImpl.kt
+│       ├── domain/repository/
+│       │   └── ClaudeRepository.kt
+│       ├── domain/usecase/
+│       │   └── SendMessageUseCase.kt
+│       └── di/
+│           └── ClaudeModule.kt         # Hilt: AnthropicClient, service, repository, use case
+│
+├── database/                           # Room database module
+│   └── src/main/java/.../database/
+│       ├── AppDatabase.kt
+│       ├── entity/
+│       │   ├── ChatEntity.kt           # chats table
+│       │   └── MessageEntity.kt        # messages table (FK → chats, CASCADE delete)
+│       └── dao/
+│           ├── ChatDao.kt
+│           └── MessageDao.kt
+│
+└── app/                                # Presentation layer
+    └── src/main/java/.../
+        ├── presentation/
+        │   ├── navigation/
+        │   │   ├── AppNavigation.kt    # Single Scaffold + NavHost + BottomNavigationBar
+        │   │   └── Screen.kt           # Bottom tab route definitions
+        │   ├── home/
+        │   │   ├── HomeScreen.kt       # Loading / Error / Success states
+        │   │   ├── HomeViewModel.kt
+        │   │   ├── HomeUiState.kt      # Sealed class: Loading, Success, Error
+        │   │   └── MessageUiModel.kt   # UI model + ChatMessage.toUiModel() mapper
+        │   ├── chats/
+        │   │   ├── ChatsScreen.kt      # Clickable chat list
+        │   │   ├── ChatsViewModel.kt
+        │   │   └── ChatUiModel.kt      # UI model + Chat.toUiModel() mapper
+        │   └── settings/
+        │       └── SettingsScreen.kt   # Placeholder
+        ├── domain/
+        │   └── repository/
+        │       └── ChatRepository.kt   # Local persistence interface
+        ├── data/
+        │   └── local/
+        │       └── ChatRepositoryImpl.kt  # Room-backed implementation
+        └── di/
+            └── DatabaseModule.kt       # Hilt: AppDatabase, DAOs, ChatRepository
 ```
 
 ## Architecture
 
-Clean Architecture layered across two Gradle modules:
+Four Gradle modules with a strict dependency graph:
 
 ```
-:app  presentation  →  domain  →  data
-                           ↑
-                       :database (Room entities + DAOs)
+:domain-models  (pure Kotlin JVM — no deps)
+       ↑
+:feature-claude   :database
+       ↑               ↑
+            :app
+```
+
+**Home screen UI state (sealed class):**
+```
+HomeUiState
+  ├── Loading   — shown during initial load, chat switch, new chat creation
+  ├── Success   — chat is active; holds messages, settings, isSending, sendError, expectedInputTokens
+  └── Error     — fatal failure (DB error, chat not found)
 ```
 
 **Send message flow:**
 ```
-ClaudeScreen
-  → ClaudeViewModel.sendMessage()
-      → ChatRepository.saveMessage()       // persist user message
-      → ChatRepository.updateChatSettings() // persist settings
-      → SendMessageUseCase()               // call Claude API
-          → ClaudeRepository.sendMessage()
-              → ClaudeApiService           // Anthropic SDK
-      → ChatRepository.saveMessage()       // persist assistant response
+HomeScreen → HomeViewModel.sendMessage()
+  → ChatRepository.saveMessage()         // persist user message
+  → ChatRepository.updateChatSettings()  // persist settings
+  → SendMessageUseCase()
+      → ClaudeRepository.sendMessage()
+          → ClaudeApiService             // Anthropic SDK — logs in/out tokens + elapsed ms
+  → ChatRepository.saveMessage()         // persist assistant response
 ```
 
-**Chat load flow (on launch / new chat):**
+**Chat load / switch flow:**
 ```
-ClaudeViewModel.init
-  → ChatRepository.getLatestChat()   // or createChat()
+HomeViewModel.init / loadChat(chatId)
+  → ChatRepository.getLatestChat() / getChatById()
   → currentChatId (MutableStateFlow)
       → flatMapLatest → getMessagesForChat() Flow
-          → ClaudeUiState.messages   // auto-updates from DB writes
+          → HomeUiState.Success.messages        // auto-updates from DB
+          → claudeRepository.countTokens()      // updates expectedInputTokens footer
 ```
+
+**UI models vs domain models:**
+Domain models (`Chat`, `ChatMessage`) live in `:domain-models` and are used across all modules. UI models (`MessageUiModel`, `ChatUiModel`) live in `:app` next to their screens, with mapper extension functions. ViewModels map domain → UI on the way in, and reverse-map UI → domain when calling the Claude API.
 
 ## Setup
 
@@ -136,7 +164,7 @@ ClaudeViewModel.init
 **`chats`**
 
 | Column | Type | Notes |
-|---|---|---|
+|--------|------|-------|
 | id | INTEGER | Primary key, auto-generated |
 | name | TEXT | Editable chat name |
 | maxTokens | INTEGER | Per-chat token limit |
@@ -148,7 +176,7 @@ ClaudeViewModel.init
 **`messages`**
 
 | Column | Type | Notes |
-|---|---|---|
+|--------|------|-------|
 | id | INTEGER | Primary key, auto-generated |
 | chatId | INTEGER | Foreign key → chats.id (CASCADE delete) |
 | role | TEXT | `"user"` or `"assistant"` |

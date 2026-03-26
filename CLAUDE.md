@@ -32,48 +32,103 @@ Once complete, verify the solution compiles by running `./gradlew assembleDebug`
 
 ## Modules
 
-| Module      | Purpose |
-|-------------|---------|
-| `:app`      | Presentation, domain, data layers; DI wiring |
-| `:database` | Room database — entities, DAOs, `AppDatabase` |
+| Module | Purpose |
+|--------|---------|
+| `:domain-models` | Pure Kotlin JVM — shared domain models (`Chat`, `ChatMessage`). No Android dependencies. |
+| `:feature-claude` | Self-contained Claude API feature — `ClaudeApiService`, `ClaudeRepository`, `SendMessageUseCase`, `ClaudeModule` (Hilt DI). Reads API key from its own `BuildConfig`. |
+| `:database` | Room database — entities, DAOs, `AppDatabase`. |
+| `:app` | Presentation layer — screens, ViewModels, UI models, mappers, navigation, `DatabaseModule`. |
 
 Module path constants are declared as `val` at the top of each `build.gradle.kts` (e.g. `val moduleDatabase = ":database"`) — never hardcode module name strings in dependency declarations.
 
+Dependency graph (arrows = "depends on"):
+```
+:domain-models  (no deps)
+      ↑
+:feature-claude   :database
+      ↑               ↑
+           :app
+```
+
 ## Architecture
 
-Clean Architecture + MVVM across `:app` and `:database` modules.
+Clean Architecture + MVVM across four Gradle modules.
 
 ```
-:app
-  presentation/   →  domain/          →  data/
-  ClaudeScreen        model               ClaudeApiService
-  ClaudeViewModel     repository          ClaudeRepositoryImpl
-  ChatsScreen         usecase             ChatRepositoryImpl
-  ChatsViewModel
-  AppNavigation
+:domain-models
+  Chat, ChatMessage
+
+:feature-claude
+  data/remote/      ClaudeApiService       → Anthropic SDK
+  data/repository/  ClaudeRepositoryImpl
+  domain/repository/ClaudeRepository
+  domain/usecase/   SendMessageUseCase
+  di/               ClaudeModule
 
 :database
-  entity/   →  dao/       →  AppDatabase
-  ChatEntity   ChatDao
-  MessageEntity  MessageDao
+  entity/   ChatEntity, MessageEntity
+  dao/      ChatDao, MessageDao
+  AppDatabase
+
+:app
+  presentation/
+    navigation/   AppNavigation, Screen
+    home/         HomeScreen, HomeViewModel, HomeUiState (sealed), HomeUiModel, MessageUiModel
+    chats/        ChatsScreen, ChatsViewModel, ChatUiModel
+    settings/     SettingsScreen
+  domain/
+    repository/   ChatRepository
+  data/
+    local/        ChatRepositoryImpl
+  di/             DatabaseModule
 ```
 
-**Message send flow:** `ClaudeScreen` → `ClaudeViewModel.sendMessage()` → saves user msg to DB → `SendMessageUseCase` → `ClaudeRepository` → `ClaudeApiService` → Anthropic SDK → saves assistant msg to DB
+**Message send flow:**
+```
+HomeScreen → HomeViewModel.sendMessage()
+  → ChatRepository.saveMessage()        // persist user message
+  → ChatRepository.updateChatSettings() // persist settings
+  → SendMessageUseCase()
+      → ClaudeRepository.sendMessage()
+          → ClaudeApiService            // Anthropic SDK
+  → ChatRepository.saveMessage()        // persist assistant response
+```
 
-**Chat persistence flow:** `ClaudeViewModel` init → `ChatRepository.getLatestChat()` (or `createChat()`) → collects `getMessagesForChat()` Flow → updates `ClaudeUiState`
+**Chat load flow (on launch / chat switch):**
+```
+HomeViewModel.init / loadChat(id)
+  → ChatRepository.getLatestChat() / getChatById()
+  → currentChatId (MutableStateFlow)
+      → flatMapLatest → getMessagesForChat() Flow
+          → HomeUiState.Success.messages  // auto-updates from DB writes
+          → claudeRepository.countTokens() // updates expectedInputTokens
+```
 
-**State:** `ClaudeViewModel` holds `StateFlow<ClaudeUiState>` (chatId, chatName, messages, settings, isLoading, error). Messages are driven by a Room Flow so they auto-update from DB writes.
+**UI state:**
+`HomeViewModel` exposes `StateFlow<HomeUiState>` which is a sealed class:
+- `Loading` — initial DB load, chat switch, new chat creation
+- `Success` — chat loaded; contains messages, settings, `isSending`, `sendError`, `expectedInputTokens`
+- `Error` — fatal failure (DB error, chat not found)
 
-**DI:** `AppModule` wires Anthropic stack. `DatabaseModule` wires `AppDatabase` → DAOs → `ChatRepository`. `NetworkModule` provides a singleton `OkHttpClient`.
+**UI models vs domain models:**
+- Domain models (`Chat`, `ChatMessage`) live in `:domain-models`, used across all modules.
+- UI models (`MessageUiModel`, `ChatUiModel`) live in `:app` next to their screens, with mapper extension functions (`Chat.toUiModel()`, `ChatMessage.toUiModel()`).
+- ViewModels map domain → UI before updating state. `HomeViewModel.sendMessage()` reverse-maps `MessageUiModel → ChatMessage` for the API call.
+
+**Shared ViewModel in navigation:**
+`HomeViewModel` is instantiated once in `AppNavigation` (activity-scoped via `hiltViewModel()`), passed explicitly to `HomeScreen`. This allows `ChatsScreen` to trigger `homeViewModel.loadChat(chatId)` before navigating to the Home tab.
+
+**DI:** `ClaudeModule` (in `:feature-claude`) wires `AnthropicOkHttpClient`, `ClaudeApiService`, `ClaudeRepository`, `SendMessageUseCase`. `DatabaseModule` (in `:app`) wires `AppDatabase` → DAOs → `ChatRepository`.
 
 ## Key Build Constraints
 
 - **AGP 9.1.0 built-in Kotlin:** Do NOT apply `kotlin-android` plugin in `app/build.gradle.kts` — it conflicts with AGP's built-in Kotlin support. Only `android-application`, `kotlin-compose`, `hilt`, and `ksp` are applied.
+- **`:domain-models` uses `kotlin("jvm")` plugin** — no Android SDK dependency. Source sets live under `src/main/kotlin/`.
 - **KSP versioning:** Kotlin 2.2.x uses KSP `2.2.x-2.0.y` scheme (not `1.0.y`).
 - **`android.disallowKotlinSourceSets=false`** in `gradle.properties` is required for KSP + AGP 9.x.
 - **Hilt ≥ 2.59.2** required for AGP 9.x compatibility.
 - **`AnthropicOkHttpClient`** (not the default client) must be used for minSdk 24 compatibility.
-- **Core library desugaring** is enabled (`isCoreLibraryDesugaringEnabled = true`) for OkHttp on minSdk 24.
+- **Core library desugaring** is enabled (`isCoreLibraryDesugaringEnabled = true`) in `:app` and `:feature-claude` for minSdk 24 compatibility.
 
 ## Anthropic SDK (0.8.0) Notes
 
@@ -81,9 +136,10 @@ Clean Architecture + MVVM across `:app` and `:database` modules.
 - `maxTokens` builder method takes `Long`, not `Int`
 - Content blocks: use `isText()` / `asText().text()` — there is no `ContentBlock.Text` class
 - Optional values use Java `Optional`: `response.stopReason().orElse(null)`
+- Token usage after response: `response.usage().inputTokens()` / `response.usage().outputTokens()` (both `Long`)
+- Pre-flight token count: `client.messages().countTokens(MessageCountTokensParams)` → `MessageTokensCount.inputTokens(): Long`
 - Model in use: `claude-haiku-4-5-20251001`
 
 ## API Key
 
-`CLAUDE_API_KEY` is read from `local.properties` (not committed) and injected via `BuildConfig.CLAUDE_API_KEY`.
- 
+`CLAUDE_API_KEY` is read from `local.properties` (not committed) and injected via `BuildConfig.CLAUDE_API_KEY`. Both `:app` and `:feature-claude` read from `local.properties` independently — `:feature-claude` owns the Anthropic client and is self-contained.
