@@ -25,4 +25,6 @@ dependencyResolutionManagement {
 rootProject.name = "ai_advent_with_love_2"
 include(":app")
 include(":database")
+include(":domain-models")
+include(":feature-claude")
  

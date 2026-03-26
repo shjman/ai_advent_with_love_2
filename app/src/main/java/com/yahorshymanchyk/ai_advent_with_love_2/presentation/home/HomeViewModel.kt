@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.ChatMessage
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.repository.ChatRepository
+import com.yahorshymanchyk.ai_advent_with_love_2.presentation.home.toUiModel
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.SendMessageUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,7 +46,7 @@ class HomeViewModel @Inject constructor(
             currentChatId
                 .filterNotNull()
                 .flatMapLatest { chatId -> chatRepository.getMessagesForChat(chatId) }
-                .collect { messages -> _uiState.update { it.copy(messages = messages) } }
+                .collect { messages -> _uiState.update { it.copy(messages = messages.map { it.toUiModel() }) } }
         }
     }
 
@@ -68,7 +69,12 @@ class HomeViewModel @Inject constructor(
         val maxTokens = state.maxTokensInput.toIntOrNull() ?: 512
         val stopSequence = state.stopSequenceInput.takeIf { it.isNotBlank() }
         val systemPrompt = state.systemPromptInput.takeIf { it.isNotBlank() }
-        val historyForApi = state.messages + ChatMessage(ChatMessage.Role.USER, userInput)
+        val historyForApi = state.messages.map {
+            ChatMessage(
+                role = if (it.isFromUser) ChatMessage.Role.USER else ChatMessage.Role.ASSISTANT,
+                content = it.content
+            )
+        } + ChatMessage(ChatMessage.Role.USER, userInput)
 
         _uiState.update { it.copy(isLoading = true, error = null) }
 

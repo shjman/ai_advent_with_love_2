@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.Chat
 
 @Composable
 fun ChatsScreen(
@@ -44,6 +43,7 @@ fun ChatsScreen(
         ) {
             items(chats, key = { it.id }) { chat ->
                 ChatItem(chat)
+
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
@@ -51,7 +51,7 @@ fun ChatsScreen(
 }
 
 @Composable
-private fun ChatItem(chat: Chat) {
+private fun ChatItem(chat: ChatUiModel) {
     Text(
         text = chat.name,
         modifier = Modifier

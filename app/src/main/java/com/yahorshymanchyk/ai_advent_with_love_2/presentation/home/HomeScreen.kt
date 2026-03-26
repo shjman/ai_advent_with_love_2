@@ -59,7 +59,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.ChatMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -245,31 +244,21 @@ private fun ChatSettingsSheet(
     }
 }
 
-private fun buildQAText(messages: List<ChatMessage>, index: Int): String {
+private fun buildQAText(messages: List<MessageUiModel>, index: Int): String {
     val message = messages[index]
-    return when (message.role) {
-        ChatMessage.Role.USER -> {
-            val answer = messages.getOrNull(index + 1)
-                ?.takeIf { it.role == ChatMessage.Role.ASSISTANT }
-                ?.content
-            if (answer != null) "Q: ${message.content}\n\nA: $answer"
-            else "Q: ${message.content}"
-        }
-
-        ChatMessage.Role.ASSISTANT -> {
-            val question = messages.getOrNull(index - 1)
-                ?.takeIf { it.role == ChatMessage.Role.USER }
-                ?.content
-            if (question != null) "Q: $question\n\nA: ${message.content}"
-            else "A: ${message.content}"
-        }
+    return if (message.isFromUser) {
+        val answer = messages.getOrNull(index + 1)?.takeIf { !it.isFromUser }?.content
+        if (answer != null) "Q: ${message.content}\n\nA: $answer" else "Q: ${message.content}"
+    } else {
+        val question = messages.getOrNull(index - 1)?.takeIf { it.isFromUser }?.content
+        if (question != null) "Q: $question\n\nA: ${message.content}" else "A: ${message.content}"
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MessageBubble(message: ChatMessage, onLongClick: () -> Unit) {
-    val isUser = message.role == ChatMessage.Role.USER
+private fun MessageBubble(message: MessageUiModel, onLongClick: () -> Unit) {
+    val isUser = message.isFromUser
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start

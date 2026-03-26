@@ -2,11 +2,11 @@ package com.yahorshymanchyk.ai_advent_with_love_2.presentation.chats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.Chat
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.repository.ChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -15,7 +15,8 @@ class ChatsViewModel @Inject constructor(
     chatRepository: ChatRepository
 ) : ViewModel() {
 
-    val chats: StateFlow<List<Chat>> = chatRepository.getAllChats()
+    val chats: StateFlow<List<ChatUiModel>> = chatRepository.getAllChats()
+        .map { chats -> chats.map { it.toUiModel() } }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
