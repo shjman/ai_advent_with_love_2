@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Working Style
 
+ **Fast path:** For clearly small and unambiguous changes
+ (single-line fixes, typos, obvious renames), skip steps 1–8
+ and proceed directly.
+
 Before starting any implementation:
 1. Read and analyze the request carefully.
 2. Ask clarifying questions — as many as needed — until requirements are unambiguous. Do not assume; ask. Prefer multiple short rounds of questions over starting with incomplete information.
@@ -143,3 +147,52 @@ HomeViewModel.init / loadChat(id)
 ## API Key
 
 `CLAUDE_API_KEY` is read from `local.properties` (not committed) and injected via `BuildConfig.CLAUDE_API_KEY`. Both `:app` and `:feature-claude` read from `local.properties` independently — `:feature-claude` owns the Anthropic client and is self-contained.
+
+## Subagent Workflow
+
+When a task has been approved and is ready for implementation,
+use two subagents in sequence.
+
+### Agent 1 — Executor
+Model: sonnet  (use model: "sonnet" in the Agent tool call)   (complex implementation, needs full reasoning)
+Spawn with the Agent tool. Pass ALL of the following in the task prompt:
+- the approved step-by-step plan (copy it verbatim)
+- full content of CLAUDE.md (so agent knows all constraints)
+- list of files that will be modified
+
+Instruction to agent:
+"Implement the following plan strictly as described.
+Do not add extra features. Do not modify files outside the plan.
+After each step, report what was done and which files were changed."
+
+### Agent 2 — Reviewer
+Model: haiku  (use model: "haiku" in the Agent tool call)  (structured checklist, cheaper, faster)
+Spawn after Executor completes. Pass:
+- the original approved plan (verbatim)
+- the full report from Executor (files changed + what was done)
+- full content of CLAUDE.md (for Key Build Constraints reference)
+
+Instruction to agent:
+"Review the implementation against the plan. Check:
+1. Does every step of the plan have a corresponding change?
+2. Are Key Build Constraints from CLAUDE.md respected?
+3. Run ./gradlew assembleDebug from the project root.
+   If it fails:
+    - If the error is a trivial fix (typo, missing import, wrong type) —
+      fix it directly and re-run the build.
+    - If the error requires understanding the original plan or
+      touching multiple files — include the full error in your report
+      and do NOT attempt to fix.
+4. Are there any obvious logic errors or missing edge cases?
+   Output: PASS or a numbered list of issues with file:line references."
+
+### After Reviewer completes
+- If PASS → report to user and stop.
+- If issues found → do NOT spawn another Executor automatically.
+  Report the issues to the user and wait for explicit instructions.
+
+### When NOT to use subagents
+- Small single-file changes — implement directly
+- Refactoring within one module — no subagents needed, implement directly,
+  but always run ./gradlew assembleDebug when done.
+- Questions and planning phase — main agent only
