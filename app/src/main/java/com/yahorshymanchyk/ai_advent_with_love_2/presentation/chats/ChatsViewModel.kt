@@ -6,6 +6,7 @@ import com.yahorshymanchyk.ai_advent_with_love_2.domain.repository.ChatRepositor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
@@ -15,11 +16,12 @@ class ChatsViewModel @Inject constructor(
     chatRepository: ChatRepository
 ) : ViewModel() {
 
-    val chats: StateFlow<List<ChatUiModel>> = chatRepository.getAllChats()
-        .map { chats -> chats.map { it.toUiModel() } }
+    val uiState: StateFlow<ChatsUiState> = chatRepository.getAllChats()
+        .map<_, ChatsUiState> { chats -> ChatsUiState.Success(chats.map { it.toUiModel() }) }
+        .catch { emit(ChatsUiState.Error(it.message ?: "Unknown error")) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList()
+            initialValue = ChatsUiState.Loading
         )
 }
