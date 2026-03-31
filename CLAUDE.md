@@ -24,6 +24,15 @@ During implementation:
 
 Once complete, verify the solution compiles by running `./gradlew assembleDebug`.
 
+## Tech Stack
+
+- **Language:** Kotlin only — no Java source files
+- **UI:** Jetpack Compose only — no XML layouts, no `View` subclasses
+- **Async:** Kotlin Coroutines + `Flow` / `StateFlow` — no `LiveData`, no RxJava, no raw callbacks
+- **DI:** Hilt only — no Koin, no manual Dagger component wiring
+- **Database:** Room only — no raw SQLite, no Realm
+- **Min SDK:** 24 — core library desugaring is enabled; standard `java.time` APIs are available
+
 ## Build Commands
 
 ```bash
@@ -123,6 +132,51 @@ HomeViewModel.init / loadChat(id)
 `HomeViewModel` is instantiated once in `AppNavigation` (activity-scoped via `hiltViewModel()`), passed explicitly to `HomeScreen`. This allows `ChatsScreen` to trigger `homeViewModel.loadChat(chatId)` before navigating to the Home tab.
 
 **DI:** `ClaudeModule` (in `:feature-claude`) wires `AnthropicOkHttpClient`, `ClaudeApiService`, `ClaudeRepository`, `SendMessageUseCase`. `DatabaseModule` (in `:app`) wires `AppDatabase` → DAOs → `ChatRepository`.
+
+## Established Patterns
+
+Follow these patterns consistently. When adding new screens or features, match the existing structure rather than inventing alternatives.
+
+**UiState sealed class** — every screen has its own `XxxUiState` sealed class with exactly three states:
+```kotlin
+sealed class XxxUiState {
+    data object Loading : XxxUiState()
+    data class Success(/* screen data */) : XxxUiState()
+    data class Error(val message: String) : XxxUiState()
+}
+```
+
+**Screen / Content split** — every screen composable is split in two:
+- `XxxScreen` — accepts `PaddingValues` + callbacks + `viewModel: XxxViewModel = hiltViewModel()`, collects state, delegates to `XxxContent`
+- `XxxContent` — pure composable, no ViewModel, no `hiltViewModel()` call; receives `uiState` and callbacks directly — this is what `@Preview` functions call
+
+**StateFlow conventions:**
+- `stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialValue)`
+- Collected in UI with `collectAsStateWithLifecycle()` (never `collectAsState()`)
+- ViewModel holds only `StateFlow` / `MutableStateFlow`, never `mutableStateOf`
+
+**Preview conventions:**
+- Always `private`, always `@Preview(showBackground = true)`
+- One preview per meaningful state: `Loading`, `Success` (with data), `Success` (empty/edge case), `Error`
+- Named `XxxYyyPreview` (e.g. `ChatsLoadingPreview`, `ChatsSuccessPreview`)
+- Call `XxxContent(...)` directly, never `XxxScreen`
+
+**Mapper extension functions** — domain → UI mapping lives as an extension on the domain type, co-located with the UI model file:
+```kotlin
+fun Chat.toUiModel() = ChatUiModel(id = id, name = name)
+```
+
+## Anti-Patterns
+
+Never introduce these — push back if a suggestion involves them:
+
+- `LiveData` or `MutableLiveData` anywhere
+- XML layout files or `View`/`ViewGroup` subclasses
+- `mutableStateOf` / `remember` inside a `ViewModel`
+- Raw `CoroutineScope(...)` inside a `ViewModel` — always use `viewModelScope`
+- `collectAsState()` — use `collectAsStateWithLifecycle()` instead
+- Hardcoded module name strings in `build.gradle.kts` — always use the `val moduleXxx` constant
+- Calling `hiltViewModel()` inside a `XxxContent` composable — only `XxxScreen` may do this
 
 ## Key Build Constraints
 
