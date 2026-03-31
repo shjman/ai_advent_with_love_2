@@ -14,7 +14,7 @@ An Android chat application powered by the Anthropic Claude API. Supports multip
 - **New chat** — start a fresh session (with confirmation dialog) via the + button in the toolbar
 - **Message copy** — long-press any message bubble to copy the Q&A pair to clipboard
 - **Expected token count** — footer shows the pre-flight token estimate for the current conversation history
-- **Typed UI states** — Home screen has distinct `Loading`, `Success`, and `Error` states
+- **Typed UI states** — every screen has distinct `Loading`, `Success`, and `Error` states (`HomeUiState`, `ChatsUiState`)
 - **Material 3** — dynamic color (Android 12+), dark/light theme support
 
 ## Tech Stack
@@ -77,8 +77,9 @@ An Android chat application powered by the Anthropic Claude API. Supports multip
         │   │   ├── HomeUiState.kt      # Sealed class: Loading, Success, Error
         │   │   └── MessageUiModel.kt   # UI model + ChatMessage.toUiModel() mapper
         │   ├── chats/
-        │   │   ├── ChatsScreen.kt      # Clickable chat list
+        │   │   ├── ChatsScreen.kt      # Loading / Success / Error states + @Preview
         │   │   ├── ChatsViewModel.kt
+        │   │   ├── ChatsUiState.kt     # Sealed class: Loading, Success, Error
         │   │   └── ChatUiModel.kt      # UI model + Chat.toUiModel() mapper
         │   └── settings/
         │       └── SettingsScreen.kt   # Placeholder
@@ -104,12 +105,17 @@ Four Gradle modules with a strict dependency graph:
             :app
 ```
 
-**Home screen UI state (sealed class):**
+**UI state (sealed class per screen):**
 ```
 HomeUiState
-  ├── Loading   — shown during initial load, chat switch, new chat creation
-  ├── Success   — chat is active; holds messages, settings, isSending, sendError, expectedInputTokens
+  ├── Loading   — initial load, chat switch, new chat creation
+  ├── Success   — chat active; holds messages, settings, isSending, sendError, expectedInputTokens
   └── Error     — fatal failure (DB error, chat not found)
+
+ChatsUiState
+  ├── Loading   — initial DB load
+  ├── Success   — holds list of ChatUiModel
+  └── Error     — DB failure
 ```
 
 **Send message flow:**
