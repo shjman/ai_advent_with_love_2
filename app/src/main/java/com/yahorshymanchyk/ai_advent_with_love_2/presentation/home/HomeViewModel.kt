@@ -86,7 +86,7 @@ class HomeViewModel @Inject constructor(
         val state = _uiState.value as? HomeUiState.Success ?: return
         val chatId = state.chatId
 
-        val maxTokens = state.maxTokensInput.toIntOrNull() ?: 512
+        val maxTokens = state.maxTokensInput.toIntOrNull() ?: DEFAULT_MAX_TOKENS
         val stopSequence = state.stopSequenceInput.takeIf { it.isNotBlank() }
         val systemPrompt = state.systemPromptInput.takeIf { it.isNotBlank() }
         val historyForApi = state.messages.map {
@@ -100,7 +100,10 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             runCatching { chatRepository.saveMessage(chatId, ChatMessage.Role.USER, userInput) }
-                .onFailure { updateSuccess { it.copy(isSending = false, sendError = it.sendError ?: "Failed to save message") }; return@launch }
+                .onFailure {
+                    updateSuccess { state -> state.copy(isSending = false, sendError = "Failed to save message") }
+                    return@launch
+                }
 
             chatRepository.updateChatSettings(chatId, maxTokens, systemPrompt, stopSequence)
 
@@ -135,6 +138,10 @@ class HomeViewModel @Inject constructor(
                 }
                 .onFailure { _uiState.value = HomeUiState.Error(it.message ?: "Failed to load chat") }
         }
+    }
+
+    companion object {
+        private const val DEFAULT_MAX_TOKENS = 512
     }
 
     fun startNewChat() {

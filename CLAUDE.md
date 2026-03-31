@@ -6,7 +6,13 @@
 
 Otherwise, before coding: ask until requirements are unambiguous, present a step-by-step plan, wait for explicit approval. Prefer short question rounds over starting with incomplete information. Surface alternatives and disagreements rather than choosing silently.
 
-During: check in at unexpected findings or decision points. After: run `./gradlew assembleDebug`.
+During: check in at unexpected findings or decision points. After: run all three checks before reporting done:
+```bash
+./gradlew detekt        # Kotlin static analysis — must pass with 0 issues
+./gradlew lintDebug     # Android Lint — must pass with 0 errors
+./gradlew assembleDebug # Compilation — must succeed
+```
+Fix all errors. For warnings: fix if straightforward; report if it requires a design decision.
 
 ## Tech Stack
 
@@ -18,7 +24,8 @@ Kotlin · Jetpack Compose · Coroutines + StateFlow · Hilt · Room · minSdk 24
 ./gradlew assembleDebug          # Build debug APK
 ./gradlew assembleRelease        # Build release APK
 ./gradlew testDebugUnitTest      # Run unit tests (debug)
-./gradlew lint                   # Run lint checks
+./gradlew lintDebug              # Android Lint (all modules via checkDependencies)
+./gradlew detekt                 # Kotlin static analysis (all modules, root task)
 ./gradlew installDebug           # Build and install on connected device/emulator
 ```
 

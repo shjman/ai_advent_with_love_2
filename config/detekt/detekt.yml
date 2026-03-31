@@ -1,0 +1,71 @@
+build:
+  maxIssues: 0
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+complexity:
+  active: true
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 15
+  LongMethod:
+    active: true
+    threshold: 60
+    ignoreAnnotated:
+      - 'Composable'      # Composables legitimately grow long
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 8
+    ignoreAnnotated:
+      - 'Composable'      # Settings sheets / screens legitimately have many params
+  TooManyFunctions:
+    active: false         # Screens + ViewModels naturally accumulate functions
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    functionPattern: '[a-zA-Z][a-zA-Z0-9]*'  # Allow PascalCase for @Composable functions
+    ignoreAnnotated:
+      - 'Composable'
+      - 'Preview'
+  PackageNaming:
+    active: true
+    packagePattern: '[a-z]+(\.[a-z][A-Za-z0-9_]*)*'  # Allow underscores (project package contains ai_advent_with_love_2)
+
+style:
+  active: true
+  ForbiddenComment:
+    active: false         # TODO/FIXME are acceptable in a learning project
+  MagicNumber:
+    active: true
+    ignoreNumbers: ['-1', '0', '1', '2', '5000']  # 5000 = WhileSubscribed timeout convention
+    ignorePropertyDeclaration: true   # Covers Color.kt hex literals and top-level constants
+    ignoreAnnotated:
+      - 'Composable'
+      - 'Preview'
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+    excludeImportStatements: true
+  ReturnCount:
+    active: true
+    max: 3
+  WildcardImport:
+    active: true
+  UnusedPrivateMember:
+    active: true
+    ignoreAnnotated:
+      - 'Preview'         # @Preview functions are invoked by Android Studio, not from code
+
+potential-bugs:
+  active: true
+
+exceptions:
+  active: true
+
+coroutines:
+  active: true

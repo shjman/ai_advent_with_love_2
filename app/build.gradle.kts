@@ -55,6 +55,15 @@ android {
         compose = true
         buildConfig = true
     }
+    lint {
+        lintConfig = rootProject.file("lint.xml")
+        xmlReport = true
+        htmlReport = true
+        abortOnError = true
+        warningsAsErrors = false
+        checkDependencies = true
+    }
+
     packaging {
         resources.excludes += setOf(
             "META-INF/DEPENDENCIES",

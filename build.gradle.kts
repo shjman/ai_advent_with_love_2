@@ -7,4 +7,16 @@ plugins {
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.detekt)
+}
+
+detekt {
+    config.setFrom(files("config/detekt/detekt.yml"))
+    buildUponDefaultConfig = true
+    source.setFrom(
+        "app/src/main/java",
+        "database/src/main/java",
+        "domain-models/src/main/kotlin",
+        "feature-claude/src/main/java"
+    )
 }

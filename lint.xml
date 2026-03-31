@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Not an app with deep links -->
+    <issue id="GoogleAppIndexingWarning" severity="ignore" />
+    <!-- No string resources to translate -->
+    <issue id="MissingTranslation" severity="ignore" />
+    <!-- Minimal resource files -->
+    <issue id="UnusedResources" severity="ignore" />
+    <!-- API compatibility -->
+    <issue id="NewApi" severity="error" />
+    <issue id="ObsoleteSdkInt" severity="warning" />
+    <!-- Security -->
+    <issue id="HardcodedDebugMode" severity="error" />
+    <!-- Generated Hilt code may produce false positives here -->
+    <issue id="InvalidPackage" severity="ignore" />
+</lint>
