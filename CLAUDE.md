@@ -109,12 +109,8 @@ Clean Architecture + MVVM.
 
 Use for approved, multi-file tasks. Skip for single-file changes, single-module refactors, or planning.
 
-### Agent 1 — Executor (model: sonnet)
-Pass: approved plan (verbatim) + CLAUDE.md content + files to modify.
-Instruction: "Implement the plan strictly. No extra features. No files outside the plan. Report each step and files changed."
-
-### Agent 2 — Reviewer (model: haiku)
-Pass: approved plan + Executor report + CLAUDE.md content.
-Instruction: "Check: (1) every plan step has a change, (2) Constraints from CLAUDE.md respected, (3) run `./gradlew assembleDebug` — fix trivial errors (typo/import/type) directly, report complex ones, (4) logic errors or missing edge cases. Output: PASS or numbered issues with file:line."
+Agents are defined in `.claude/agents/`:
+- **executor** (sonnet) — implements the approved plan
+- **reviewer** (haiku) — runs detekt, lintDebug, assembleDebug and reviews result
 
 After Reviewer: PASS → report and stop. Issues → report to user, wait for instructions. Never auto-spawn another Executor.
