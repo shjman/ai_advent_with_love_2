@@ -31,6 +31,7 @@ An Android chat application powered by the Anthropic Claude API. Supports multip
 | Network | OkHttp 4.12.0 |
 | AI | Anthropic Java SDK 0.8.0 (claude-haiku-4-5-20251001) |
 | Logging | Timber 5.0.1 |
+| Static analysis | Detekt 1.23.8 |
 | Build | AGP 9.1.0, minSdk 24, targetSdk 36 |
 
 ## Project Structure
@@ -158,11 +159,12 @@ Domain models (`Chat`, `ChatMessage`) live in `:domain-models` and are used acro
 ## Build Commands
 
 ```bash
-./gradlew assembleDebug       # Build debug APK
-./gradlew assembleRelease     # Build release APK
-./gradlew testDebugUnitTest   # Run unit tests
-./gradlew lint                # Run lint checks
-./gradlew installDebug        # Build and install on connected device/emulator
+./gradlew assembleDebug          # Build debug APK
+./gradlew assembleRelease        # Build release APK
+./gradlew testDebugUnitTest      # Run unit tests
+./gradlew detekt                 # Kotlin static analysis (all modules)
+./gradlew lintDebug              # Android Lint (all modules via checkDependencies)
+./gradlew installDebug           # Build and install on connected device/emulator
 ```
 
 ## Database Schema
