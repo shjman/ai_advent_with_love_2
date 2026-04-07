@@ -148,7 +148,8 @@ All other transitions are FORBIDDEN. State current → next stage explicitly bef
 - Each Agent prompt must include: (1) original user request, (2) summary of previous stage result, (3) rollback reason if applicable.
 - Save each subagent result as a brief summary before launching the next stage.
 - After Plan stage: present the plan to the user and wait for explicit approval before launching executor.
-- After Reviewer: PASS → write Report and move to Done. Issues → report to user, wait for instructions. Never auto-spawn another Executor.
+- After Reviewer: PASS → write Report and move to Done. Issues → report to user, wait for instructions. Never auto-spawn another Executor. 
+- Context files are passed between agents via `.claude/context/` (task.md → plan.md → execution-report.md → review-result.md). This directory is gitignored.
 
 ### CONSILIUM — Research Stage
 
@@ -156,9 +157,9 @@ The `planner` agent runs four expert subagents **in parallel**:
 
 | Expert | Agent | Focus |
 |---|---|---|
-| Architecture | `java-architect` | Modules, dependencies, SOLID, design patterns |
-| Kotlin/Android | `kotlin-specialist` | Coroutines, Compose, Hilt, Room, idiomatic Kotlin |
-| Security | `security-kotlin` | OWASP, vulnerabilities, data exposure |
-| UI/UX | `ui-designer` | Screen design, UX flows, Compose component patterns |
+| Architecture | `android-architect` | Modules, dependencies, SOLID, Clean Architecture layers |
+| Kotlin/Android | `kotlin-specialist` | Coroutines, Compose, Hilt, Room, build constraints |
+| Security | `security-android` | API key exposure, network security, Room, logging risks |
+| UI/UX | `ui-designer` | Screen structure, UX flows, Material 3, Compose patterns |
 
 Planner synthesizes their findings into a Research Summary, then forms the implementation plan.
