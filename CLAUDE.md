@@ -2,6 +2,10 @@
 
 ## Working Style
 
+**Quality over speed.** Do not accept "we'll fix it later", "good enough for MVP", or "it's temporary". Temporary solutions become permanent.
+
+**Right to decline.** If a requested approach would result in a workaround, a SOLID violation, or introduce tech debt — object, explain why, and propose an alternative. Silent agreement with a bad decision is itself an error. If the user insists, clearly state the risks before proceeding.
+
 **Fast path:** Single-line fixes, typos, obvious renames — skip planning and proceed directly.
 
 Otherwise, before coding: ask until requirements are unambiguous, present a step-by-step plan, wait for explicit approval. Prefer short question rounds over starting with incomplete information. Surface alternatives and disagreements rather than choosing silently.
