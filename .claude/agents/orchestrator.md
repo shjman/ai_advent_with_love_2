@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: Main entry point for all non-trivial tasks in ai_advent_with_love_2. Manages stages, routes to specialist agents, passes context via files. Always invoke first for multi-file or multi-module tasks.
-model: claude-sonnet-4-6
+model: claude-haiku-4-5-20251001
 tools: Read, Write, Bash, Agent
 ---
 
