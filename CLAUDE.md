@@ -6,17 +6,9 @@
 
 **Right to decline.** If a requested approach would result in a workaround, a SOLID violation, or introduce tech debt — object, explain why, and propose an alternative. Silent agreement with a bad decision is itself an error. If the user insists, clearly state the risks before proceeding.
 
-**Fast path:** Single-line fixes, typos, obvious renames — skip planning and proceed directly.
+**Fast path:** Single-line fixes, typos, obvious renames — implement directly. Do not spawn orchestrator.
 
-Otherwise, before coding: ask until requirements are unambiguous, present a step-by-step plan, wait for explicit approval. Prefer short question rounds over starting with incomplete information. Surface alternatives and disagreements rather than choosing silently.
-
-During: check in at unexpected findings or decision points. After: run all three checks before reporting done:
-```bash
-./gradlew detekt        # Kotlin static analysis — must pass with 0 issues
-./gradlew lintDebug     # Android Lint — must pass with 0 errors
-./gradlew assembleDebug # Compilation — must succeed
-```
-Fix all errors. For warnings: fix if straightforward; report if it requires a design decision.
+**Non-trivial tasks:** Ask until requirements are unambiguous, then spawn the `orchestrator` agent. It manages all stages, approval gates, and context passing. Prefer short question rounds over starting with incomplete information.
 
 ## Tech Stack
 
@@ -111,55 +103,4 @@ Clean Architecture + MVVM.
 
 ## Workflow
 
-**Fast path:** Single-line fixes, typos, obvious renames — skip all stages, implement directly.
-
-All other requests follow this pipeline. The manager (this context) **orchestrates only** — it never writes code or runs analysis directly. It manages stage transitions, passes context between agents, and shows summaries to the user.
-
-### Stages
-
-| # | Stage | Agent | Model |
-|---|---|---|---|
-| 1 | Research | `planner` (CONSILIUM) | opus |
-| 2 | Plan | `planner` | opus |
-| 3 | Executing | `executor` | opus |
-| 4 | Validation | `reviewer` | sonnet |
-| 5 | Report | manager (inline) | — |
-| 6 | Done | manager (inline) | — |
-
-### Allowed Transitions
-
-```
-Research   → Plan
-Research   → Executing
-Plan       → Executing
-Executing  → Validation
-Executing  → Research
-Validation → Report
-Validation → Executing
-Validation → Research
-Report     → Done
-```
-
-All other transitions are FORBIDDEN. State current → next stage explicitly before every transition.
-
-### Orchestration Rules
-
-- Every stage runs in a separate subagent via the Agent tool.
-- Each Agent prompt must include: (1) original user request, (2) summary of previous stage result, (3) rollback reason if applicable.
-- Save each subagent result as a brief summary before launching the next stage.
-- After Plan stage: present the plan to the user and wait for explicit approval before launching executor.
-- After Reviewer: PASS → write Report and move to Done. Issues → report to user, wait for instructions. Never auto-spawn another Executor. 
-- Context files are passed between agents via `.claude/context/` (task.md → plan.md → execution-report.md → review-result.md). This directory is gitignored.
-
-### CONSILIUM — Research Stage
-
-The `planner` agent runs four expert subagents **in parallel**:
-
-| Expert | Agent | Focus |
-|---|---|---|
-| Architecture | `android-architect` | Modules, dependencies, SOLID, Clean Architecture layers |
-| Kotlin/Android | `kotlin-specialist` | Coroutines, Compose, Hilt, Room, build constraints |
-| Security | `security-android` | API key exposure, network security, Room, logging risks |
-| UI/UX | `ui-designer` | Screen structure, UX flows, Material 3, Compose patterns |
-
-Planner synthesizes their findings into a Research Summary, then forms the implementation plan.
+Non-trivial tasks are handled by the `orchestrator` agent. Spawn it with the user's request — it manages Research → Plan → approval → Executing → Validation → Report → Done.

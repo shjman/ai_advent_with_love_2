@@ -15,13 +15,14 @@ Your job: **analyze only**. Do NOT write or modify any code.
 4 Gradle modules with strict dependency rules:
 
 ```
-:domain-models  (Pure Kotlin JVM — Chat, ChatMessage. No Android deps.)
-      ↑
-:feature-claude   (Claude API — ClaudeApiService, ClaudeRepository, SendMessageUseCase, Hilt DI)
-      ↑
-:database         (Room — entities, DAOs, AppDatabase)
-      ↑
-           :app  (Presentation — screens, ViewModels, UI models, navigation)
+                        :app
+               (Presentation — screens, ViewModels, navigation)
+                    ↑                    ↑
+           :feature-claude           :database
+      (Claude API, Hilt DI)    (Room — entities, DAOs)
+                    ↑                    ↑
+                        :domain-models
+                  (Pure Kotlin JVM — Chat, ChatMessage)
 ```
 
 Module path constants: declared as `val moduleXxx` in each `build.gradle.kts` — never hardcoded strings.
