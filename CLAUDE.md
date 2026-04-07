@@ -109,12 +109,56 @@ Clean Architecture + MVVM.
 
 `CLAUDE_API_KEY` from `local.properties` → `BuildConfig.CLAUDE_API_KEY`. Both `:app` and `:feature-claude` read it independently.
 
-## Subagent Workflow
+## Workflow
 
-Use for approved, multi-file tasks. Skip for single-file changes, single-module refactors, or planning.
+**Fast path:** Single-line fixes, typos, obvious renames — skip all stages, implement directly.
 
-Agents are defined in `.claude/agents/`:
-- **executor** (sonnet) — implements the approved plan
-- **reviewer** (haiku) — runs detekt, lintDebug, assembleDebug and reviews result
+All other requests follow this pipeline. The manager (this context) **orchestrates only** — it never writes code or runs analysis directly. It manages stage transitions, passes context between agents, and shows summaries to the user.
 
-After Reviewer: PASS → report and stop. Issues → report to user, wait for instructions. Never auto-spawn another Executor.
+### Stages
+
+| # | Stage | Agent | Model |
+|---|---|---|---|
+| 1 | Research | `planner` (CONSILIUM) | opus |
+| 2 | Plan | `planner` | opus |
+| 3 | Executing | `executor` | opus |
+| 4 | Validation | `reviewer` | sonnet |
+| 5 | Report | manager (inline) | — |
+| 6 | Done | manager (inline) | — |
+
+### Allowed Transitions
+
+```
+Research   → Plan
+Research   → Executing
+Plan       → Executing
+Executing  → Validation
+Executing  → Research
+Validation → Report
+Validation → Executing
+Validation → Research
+Report     → Done
+```
+
+All other transitions are FORBIDDEN. State current → next stage explicitly before every transition.
+
+### Orchestration Rules
+
+- Every stage runs in a separate subagent via the Agent tool.
+- Each Agent prompt must include: (1) original user request, (2) summary of previous stage result, (3) rollback reason if applicable.
+- Save each subagent result as a brief summary before launching the next stage.
+- After Plan stage: present the plan to the user and wait for explicit approval before launching executor.
+- After Reviewer: PASS → write Report and move to Done. Issues → report to user, wait for instructions. Never auto-spawn another Executor.
+
+### CONSILIUM — Research Stage
+
+The `planner` agent runs four expert subagents **in parallel**:
+
+| Expert | Agent | Focus |
+|---|---|---|
+| Architecture | `java-architect` | Modules, dependencies, SOLID, design patterns |
+| Kotlin/Android | `kotlin-specialist` | Coroutines, Compose, Hilt, Room, idiomatic Kotlin |
+| Security | `security-kotlin` | OWASP, vulnerabilities, data exposure |
+| UI/UX | `ui-designer` | Screen design, UX flows, Compose component patterns |
+
+Planner synthesizes their findings into a Research Summary, then forms the implementation plan.

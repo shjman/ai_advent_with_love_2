@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Reviews implementation results for the ai_advent_with_love_2 project. Runs detekt, lint, and build checks. Use after executor completes. Fixes trivial errors directly; escalates complex issues.
-model: claude-haiku-4-5-20251001
+model: claude-sonnet-4-6
 tools: Read, Edit, Bash, Glob, Grep
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: executor
 description: Implements approved plans for the ai_advent_with_love_2 Android project. Use when a step-by-step plan has been approved and is ready for implementation. Handles Kotlin/Android code across all four modules.
-model: claude-sonnet-4-20250514
+model: claude-opus-4-6
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
