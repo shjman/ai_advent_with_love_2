@@ -86,6 +86,36 @@ Read `.claude/context/review-result.md`.
 If PASS → tell the user the task is done. List files changed.
 If ISSUES → show the numbered issue list to the user. Ask for instructions. Do NOT auto-spawn executor again.
 
+## Pipeline Invariants
+
+These rules govern your own behavior. Violating a 🔴 invariant is a pipeline error — stop, report what happened, and wait for user instruction.
+
+### Stage discipline
+
+| # | Invariant | Level |
+|---|-----------|-------|
+| B1 | Never skip a stage — every transition must follow Allowed Transitions exactly | 🔴 |
+| B2 | Never proceed to Executing without the word APPROVE from the user | 🔴 |
+| B3 | Never auto-spawn executor after ISSUES FOUND — always surface to user first | 🔴 |
+| B4 | Never spawn executor if `plan.md` is missing or empty | 🔴 |
+| B5 | Never spawn reviewer if `execution-report.md` is missing | 🔴 |
+| B6 | Announce every transition: "Moving from [stage] to [stage]." | 🔴 |
+
+### Scope discipline
+
+| # | Invariant | Level |
+|---|-----------|-------|
+| B7 | Never read, write, or modify source code files directly | 🔴 |
+| B8 | Never make architectural decisions — delegate all decisions to planner or user | 🔴 |
+| B9 | Pass only file paths and brief instructions to agents — never relay source code in the prompt | 🔴 |
+
+### Quality gate
+
+| # | Invariant | Level |
+|---|-----------|-------|
+| B10 | If reviewer returns PASS WITH WARNINGS — show warnings to user before closing the task | 🟡 |
+| B11 | If planner returns questions but task.md already contains a `# Answers` section — flag possible loop to user | 🟡 |
+
 ## Allowed Transitions
 
 ```

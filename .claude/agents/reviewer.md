@@ -25,23 +25,60 @@ Read each file listed in `execution-report.md`.
 Verify every step of the plan in `plan.md` has a corresponding change.
 Report any missing steps with the plan step number.
 
-## Check 2 — Build Constraints
+## Check 2 — Architectural Invariants
 
-Verify changed files respect these rules:
+Scan every changed file against the invariants below.
 
-- No `kotlin-android` plugin in `app/build.gradle.kts`
-- `:domain-models` sources under `src/main/kotlin/` only
-- KSP version matches `2.2.x-2.0.y` scheme if changed
-- `AnthropicOkHttpClient` used (not default client)
-- No hardcoded module name strings in `build.gradle.kts`
-- Anthropic SDK: `maxTokens` is `Long`, content blocks use `isText()`/`asText().text()`
+🔴 **RED — hard blocker.** Any violation → ISSUES FOUND. PASS is forbidden until resolved.
+🟡 **YELLOW — soft flag.** Flag in the report but do not block PASS. Label clearly as `[WARNING]`.
 
-**Never use patterns:**
-- `LiveData` / `MutableLiveData`
-- `mutableStateOf` in ViewModel
-- Raw `CoroutineScope` in ViewModel
-- `collectAsState()` instead of `collectAsStateWithLifecycle()`
-- `hiltViewModel()` inside `XxxContent`
+---
+
+### Layering
+
+| # | Invariant | Level |
+|---|-----------|-------|
+| A1 | ViewModel never imports Repository directly — must go through UseCase | 🔴 |
+| A2 | Repository depends only on DataSource — no DAO or API imports | 🔴 |
+| A3 | DataSource depends only on DAO or platform API — no domain logic | 🔴 |
+| A4 | UseCase returns only `Result<T>` or `Flow<T>` | 🔴 |
+
+### Compose / UI
+
+| # | Invariant | Level |
+|---|-----------|-------|
+| A5 | `hiltViewModel()` only in Screen — never in View or any composable it calls | 🔴 |
+| A6 | View file contains no `@Preview` functions | 🔴 |
+| A7 | View file contains no `remember` except Compose UI infra (`rememberLazyListState`, `rememberModalBottomSheetState`, `rememberCoroutineScope`) | 🔴 |
+| A8 | Screen contains only: `hiltViewModel`, `collectAsStateWithLifecycle`, and the View call | 🔴 |
+| A9 | No `collectAsState()` — only `collectAsStateWithLifecycle()` | 🔴 |
+
+### ViewModel
+
+| # | Invariant | Level |
+|---|-----------|-------|
+| A10 | No `LiveData` / `MutableLiveData` anywhere | 🔴 |
+| A11 | No `mutableStateOf` in ViewModel — use `MutableStateFlow` | 🔴 |
+| A12 | No raw `CoroutineScope` in ViewModel — use `viewModelScope` | 🔴 |
+
+### File structure
+
+| # | Invariant | Level |
+|---|-----------|-------|
+| A13 | Every class, sealed class, and enum in its own file — no god files | 🔴 |
+| A14 | File over 1000 lines | 🔴 |
+| A15 | File over 600 lines | 🟡 |
+
+### Build
+
+| # | Invariant | Level |
+|---|-----------|-------|
+| A16 | No `kotlin-android` plugin in `app/build.gradle.kts` | 🔴 |
+| A17 | No hardcoded module name strings in `build.gradle.kts` | 🔴 |
+| A18 | KSP version matches `2.2.x-2.0.y` scheme if changed | 🔴 |
+| A19 | `AnthropicOkHttpClient` used — not the default Anthropic client | 🔴 |
+| A20 | Anthropic SDK: `maxTokens` is `Long`, content blocks use `isText()`/`asText().text()` | 🔴 |
+| A21 | `:domain-models` sources under `src/main/kotlin/` only | 🔴 |
 
 ## Check 3 — Static Analysis + Build
 
@@ -73,27 +110,33 @@ Read changed files and check:
 
 Write to `.claude/context/review-result.md`:
 
-**If all checks pass:**
+**If all RED invariants pass and no other blockers:**
 ```markdown
 # Review Result: PASS
 
 - Plan coverage: all N steps implemented ✓
-- Build constraints: no violations ✓
+- Architectural invariants: no 🔴 violations ✓
 - detekt: 0 issues ✓
 - lintDebug: 0 errors ✓
 - assembleDebug: BUILD SUCCESSFUL ✓
 - Logic: no issues found ✓
+
+## Warnings  ← omit section if none
+- [WARNING] A15 HomeScreen.kt — 643 lines (over 600 soft limit)
 ```
 
-**If issues found:**
+**If any RED invariant is violated or build fails:**
 ```markdown
 # Review Result: ISSUES FOUND
 
-1. [Check 1] Plan step 3 not implemented — `HomeViewModel.kt` unchanged
-2. [Check 2] app/build.gradle.kts:14 — hardcoded module string ":database"
-3. [Check 3 - detekt] HomeViewModel.kt:42 — LongMethod rule (requires refactor decision)
-4. [Check 4] ClaudeApiService.kt:87 — blocking call runBlocking on potentially main thread
+## Blockers 🔴
+1. [A1] HomeViewModel.kt:12 — imports ChatRepository directly, bypassing UseCase
+2. [A9] StatsScreen.kt:44 — collectAsState() used instead of collectAsStateWithLifecycle()
+3. [Check 3] assembleDebug FAILED — HomeViewModel.kt:88 unresolved reference: sendChatMessage
+
+## Warnings 🟡
+4. [WARNING][A15] ChatsView.kt — 621 lines (over 600 soft limit)
 ```
 
-Return a short summary to the orchestrator: PASS or ISSUES FOUND (with count).
+Return a short summary to the orchestrator: PASS / PASS WITH WARNINGS / ISSUES FOUND (with blocker count).
 Never auto-spawn another executor. Stop and wait for orchestrator to report to user.
