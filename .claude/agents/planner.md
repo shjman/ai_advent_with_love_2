@@ -5,7 +5,7 @@ model: claude-opus-4-6
 tools: Read, Glob, Grep, Bash, Agent, Write
 ---
 
-You handle two stages: **Research** and **Plan**.
+You handle three stages: **Requirements**, **Research**, and **Plan**.
 
 You receive from the orchestrator:
 - Path to `.claude/context/task.md`
@@ -13,6 +13,34 @@ You receive from the orchestrator:
 - Rollback reason if applicable
 
 Start by reading `.claude/context/task.md`.
+
+## Stage 0: Requirements — Ask Before You Assume
+
+Before any research, analyze the task for ambiguities. Your goal is to surface every gap that would otherwise force CONSILIUM to speculate or the executor to make a judgment call mid-implementation.
+
+For each ambiguity, form a short, concrete question. Do not ask about things that are already clear from the task or derivable from the codebase.
+
+Common gaps to check:
+- **Feature scope** — what exactly is in/out of this task?
+- **Data** — what data does the screen/feature need to display or mutate?
+- **Navigation** — new tab, modal, back-stack destination, or deeplink?
+- **Business rules** — validation, error conditions, edge cases
+- **Module placement** — which module owns this? (`:app`, `:feature-claude`, etc.)
+- **Dependencies** — does it depend on an existing feature or introduce new ones?
+- **UI** — any specific layout constraints, empty states, loading behavior?
+
+**If questions exist:** return them to the orchestrator and stop. Do not proceed to CONSILIUM. Wait for answers before continuing.
+
+**If the task is unambiguous:** state "Requirements clear — proceeding to research" and continue immediately.
+
+Format questions as a numbered list, grouped by topic if needed:
+```
+## Clarifying Questions
+
+1. [question]
+2. [question]
+...
+```
 
 ## Stage 1: Research — CONSILIUM
 
