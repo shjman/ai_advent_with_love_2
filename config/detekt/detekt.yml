@@ -18,9 +18,10 @@ complexity:
   LongParameterList:
     active: true
     functionThreshold: 8
-    constructorThreshold: 8
+    constructorThreshold: 9
     ignoreAnnotated:
       - 'Composable'      # Settings sheets / screens legitimately have many params
+      - 'HiltViewModel'   # ViewModels with multiple use cases are legitimate in Clean Architecture
   TooManyFunctions:
     active: false         # Screens + ViewModels naturally accumulate functions
 

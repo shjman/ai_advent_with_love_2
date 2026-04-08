@@ -1,7 +1,5 @@
 package com.yahorshymanchyk.ai_advent_with_love_2.data.local
 
-import com.yahorshymanchyk.ai_advent_with_love_2.database.dao.ChatDao
-import com.yahorshymanchyk.ai_advent_with_love_2.database.dao.MessageDao
 import com.yahorshymanchyk.ai_advent_with_love_2.database.entity.ChatEntity
 import com.yahorshymanchyk.ai_advent_with_love_2.database.entity.MessageEntity
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.model.Chat
@@ -11,36 +9,31 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class ChatRepositoryImpl(
-    private val chatDao: ChatDao,
-    private val messageDao: MessageDao
+    private val dataSource: ChatLocalDataSource
 ) : ChatRepository {
 
     override fun getAllChats(): Flow<List<Chat>> =
-        chatDao.getAllChats().map { entities -> entities.map { it.toChat() } }
+        dataSource.getAllChats().map { entities -> entities.map { it.toChat() } }
 
     override suspend fun getLatestChat(): Chat? =
-        chatDao.getLatestChat()?.toChat()
+        dataSource.getLatestChat()?.toChat()
 
     override suspend fun getChatById(chatId: Long): Chat? =
-        chatDao.getChatById(chatId)?.toChat()
+        dataSource.getChatById(chatId)?.toChat()
 
     override suspend fun createChat(): Chat {
         val now = System.currentTimeMillis()
         val entity = ChatEntity(
-            name = "New chat",
-            maxTokens = 512,
-            systemPrompt = null,
-            stopSequence = null,
-            createdAt = now,
-            updatedAt = now
+            name = "New chat", maxTokens = 512, systemPrompt = null,
+            stopSequence = null, createdAt = now, updatedAt = now
         )
-        val id = chatDao.insertChat(entity)
+        val id = dataSource.insertChat(entity)
         return entity.copy(id = id).toChat()
     }
 
     override suspend fun updateChatName(chatId: Long, name: String) {
-        val existing = chatDao.getChatById(chatId) ?: return
-        chatDao.updateChat(existing.copy(name = name, updatedAt = System.currentTimeMillis()))
+        val existing = dataSource.getChatById(chatId) ?: return
+        dataSource.updateChat(existing.copy(name = name, updatedAt = System.currentTimeMillis()))
     }
 
     override suspend fun updateChatSettings(
@@ -49,8 +42,8 @@ class ChatRepositoryImpl(
         systemPrompt: String?,
         stopSequence: String?
     ) {
-        val existing = chatDao.getChatById(chatId) ?: return
-        chatDao.updateChat(
+        val existing = dataSource.getChatById(chatId) ?: return
+        dataSource.updateChat(
             existing.copy(
                 maxTokens = maxTokens,
                 systemPrompt = systemPrompt,
@@ -61,20 +54,19 @@ class ChatRepositoryImpl(
     }
 
     override suspend fun saveMessage(chatId: Long, role: ChatMessage.Role, content: String) {
-        messageDao.insertMessage(
-            MessageEntity(
-                chatId = chatId,
-                role = role.name.lowercase(),
-                content = content,
-                timestamp = System.currentTimeMillis()
-            )
+        val messageEntity = MessageEntity(
+            chatId = chatId,
+            role = role.name.lowercase(),
+            content = content,
+            timestamp = System.currentTimeMillis()
         )
-        val chat = chatDao.getChatById(chatId) ?: return
-        chatDao.updateChat(chat.copy(updatedAt = System.currentTimeMillis()))
+        dataSource.insertMessage(messageEntity)
+        val chat = dataSource.getChatById(chatId) ?: return
+        dataSource.updateChat(chat.copy(updatedAt = System.currentTimeMillis()))
     }
 
     override fun getMessagesForChat(chatId: Long): Flow<List<ChatMessage>> =
-        messageDao.getMessagesForChat(chatId).map { entities -> entities.map { it.toChatMessage() } }
+        dataSource.getMessagesForChat(chatId).map { entities -> entities.map { it.toChatMessage() } }
 }
 
 private fun ChatEntity.toChat() = Chat(

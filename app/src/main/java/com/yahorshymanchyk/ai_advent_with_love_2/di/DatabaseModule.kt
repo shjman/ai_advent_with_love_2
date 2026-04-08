@@ -2,6 +2,8 @@ package com.yahorshymanchyk.ai_advent_with_love_2.di
 
 import android.content.Context
 import androidx.room.Room
+import com.yahorshymanchyk.ai_advent_with_love_2.data.local.ChatLocalDataSource
+import com.yahorshymanchyk.ai_advent_with_love_2.data.local.ChatLocalDataSourceImpl
 import com.yahorshymanchyk.ai_advent_with_love_2.data.local.ChatRepositoryImpl
 import com.yahorshymanchyk.ai_advent_with_love_2.database.AppDatabase
 import com.yahorshymanchyk.ai_advent_with_love_2.database.dao.ChatDao
@@ -33,6 +35,11 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideChatRepository(chatDao: ChatDao, messageDao: MessageDao): ChatRepository =
-        ChatRepositoryImpl(chatDao, messageDao)
+    fun provideChatLocalDataSource(chatDao: ChatDao, messageDao: MessageDao): ChatLocalDataSource =
+        ChatLocalDataSourceImpl(chatDao, messageDao)
+
+    @Provides
+    @Singleton
+    fun provideChatRepository(dataSource: ChatLocalDataSource): ChatRepository =
+        ChatRepositoryImpl(dataSource)
 }
