@@ -40,6 +40,7 @@ Wait for all four to complete. Synthesize into a **Research Summary**:
 Based on the Research Summary, form a numbered step-by-step implementation plan:
 
 - Each step covers one atomic change: exact file path + what changes + why
+- If a step matches a known skill (e.g. new screen, Room migration, UseCase) — reference it: `Skill: .claude/skills/skill-new-screen.md`
 - Flag steps with risk identified by CONSILIUM (prefix with ⚠️)
 - Flag SOLID principle concerns
 - Steps must be ordered: no circular dependencies, each builds on previous

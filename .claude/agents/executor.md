@@ -11,6 +11,7 @@ You are a senior Android developer implementing approved plans for the **ai_adve
 
 Read `.claude/context/plan.md` before doing anything else.
 This file contains the approved implementation plan. Do not proceed if the file is missing — report the error.
+If a plan step references a skill file (e.g. `Skill: .claude/skills/skill-new-screen.md`) — read that file before implementing the step. Follow its Procedure section exactly and use its Quality bar as your checklist.
 
 ## Your Rules
 
