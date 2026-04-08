@@ -8,10 +8,8 @@ import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.CreateChatUseCas
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.GetChatByIdUseCase
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.GetMessagesUseCase
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.GetOrCreateLatestChatUseCase
-import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.SaveMessageUseCase
+import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.SendChatMessageUseCase
 import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.UpdateChatNameUseCase
-import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.UpdateChatSettingsUseCase
-import com.yahorshymanchyk.ai_advent_with_love_2.domain.usecase.SendMessageUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,9 +29,7 @@ class HomeViewModel @Inject constructor(
     private val getMessagesUseCase: GetMessagesUseCase,
     private val countTokensUseCase: CountTokensUseCase,
     private val updateChatNameUseCase: UpdateChatNameUseCase,
-    private val updateChatSettingsUseCase: UpdateChatSettingsUseCase,
-    private val saveMessageUseCase: SaveMessageUseCase,
-    private val sendMessageUseCase: SendMessageUseCase
+    private val sendChatMessageUseCase: SendChatMessageUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -103,33 +99,23 @@ class HomeViewModel @Inject constructor(
         val state = _uiState.value as? HomeUiState.Success ?: return
         val userInput = state.inputText.trim()
         if (userInput.isBlank()) return
-        val chatId = state.chatId
-        val maxTokens = state.maxTokensInput.toIntOrNull() ?: DEFAULT_MAX_TOKENS
-        val stopSequence = state.stopSequenceInput.takeIf { it.isNotBlank() }
-        val systemPrompt = state.systemPromptInput.takeIf { it.isNotBlank() }
-        val historyForApi = state.messages.map {
+        val history = state.messages.map {
             ChatMessage(role = if (it.isFromUser) ChatMessage.Role.USER else ChatMessage.Role.ASSISTANT, content = it.content)
         } + ChatMessage(ChatMessage.Role.USER, userInput)
 
         updateSuccess { it.copy(isSending = true, sendError = null, inputText = "") }
 
         viewModelScope.launch {
-            saveMessageUseCase(chatId, ChatMessage.Role.USER, userInput)
-                .onFailure {
-                    updateSuccess { s -> s.copy(isSending = false, sendError = "Failed to save message") }
-                    return@launch
-                }
-
-            updateChatSettingsUseCase(chatId, maxTokens, systemPrompt, stopSequence)
-
-            sendMessageUseCase(historyForApi, maxTokens, stopSequence, systemPrompt)
-                .onSuccess { assistantMsg ->
-                    saveMessageUseCase(chatId, ChatMessage.Role.ASSISTANT, assistantMsg.content)
-                    updateSuccess { it.copy(isSending = false, sendError = null) }
-                }
-                .onFailure { error ->
-                    updateSuccess { it.copy(isSending = false, sendError = error.message ?: "Failed to get response") }
-                }
+            sendChatMessageUseCase(
+                chatId = state.chatId,
+                userInput = userInput,
+                history = history,
+                maxTokens = state.maxTokensInput.toIntOrNull() ?: DEFAULT_MAX_TOKENS,
+                systemPrompt = state.systemPromptInput.takeIf { it.isNotBlank() },
+                stopSequence = state.stopSequenceInput.takeIf { it.isNotBlank() }
+            )
+                .onSuccess { updateSuccess { it.copy(isSending = false, sendError = null) } }
+                .onFailure { error -> updateSuccess { it.copy(isSending = false, sendError = error.message ?: "Failed to get response") } }
         }
     }
 
