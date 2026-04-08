@@ -39,9 +39,24 @@ Write the user's request to `.claude/context/task.md`:
 
 Invoke the `planner` agent. Pass only:
 - Path to `.claude/context/task.md`
-- Instruction: "Read task.md. Run CONSILIUM. Write output to .claude/context/plan.md. Return a short summary."
+- Instruction: "Read task.md. Run Stage 0 (Requirements). If questions exist, return them and stop — do NOT write plan.md yet. If requirements are clear, run CONSILIUM and write output to .claude/context/plan.md. Return a short summary of what you did."
 
-Wait for planner to complete and write `plan.md`.
+After the planner returns, check what it produced:
+
+**If the planner returned questions (no `plan.md` written):**
+→ Move to Requirements Q&A stage.
+
+**If the planner wrote `plan.md`:**
+→ Move to Approval stage.
+
+### Requirements Q&A
+
+Show the planner's questions to the user exactly as returned.
+Write clearly: "Please answer the questions above so planning can proceed."
+
+Wait for the user's answers. Then:
+1. Append the answers to `.claude/context/task.md` under a `# Answers` section.
+2. Go back to Research + Plan (re-invoke the planner with the updated task.md).
 
 ### Approval
 
@@ -74,13 +89,15 @@ If ISSUES → show the numbered issue list to the user. Ask for instructions. Do
 ## Allowed Transitions
 
 ```
-Setup            → Research + Plan
-Research + Plan  → Approval
-Approval         → Executing       (only after APPROVE)
-Approval         → Research + Plan (if user requests changes)
-Executing        → Validation
-Validation       → Report + Done
-Report + Done    → Executing       (only if user explicitly says to fix issues)
+Setup               → Research + Plan
+Research + Plan     → Requirements Q&A   (if planner returned questions)
+Research + Plan     → Approval           (if planner wrote plan.md)
+Requirements Q&A    → Research + Plan    (after user answers — re-invoke planner)
+Approval            → Executing          (only after APPROVE)
+Approval            → Research + Plan    (if user requests changes)
+Executing           → Validation
+Validation          → Report + Done
+Report + Done       → Executing          (only if user explicitly says to fix issues)
 ```
 
 All other transitions are FORBIDDEN.
